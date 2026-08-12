@@ -1,9 +1,730 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-  </head>
-  <body>
-    
-  </body>
-</html>
+<meta charset="utf-8">
+<title>Ovia Master OS</title>
+<style>
+  /* Deliberately NOT Ovia brand. This is an internal instrument panel, not a
+     client surface — cool slate ground, single cyan accent, colour reserved for
+     data. Leo: "it's using Ovia brand colors when it doesn't need to." */
+  :root{
+    --bg:#0b0e13; --panel:#131820; --panel2:#1a212c; --line:#242d3a; --soft:#1d2531;
+    --ink:#e6ebf2; --ink2:#95a1b4; --ink3:#5f6b7d;
+    --accent:#3ddc97; --accent-ink:#06120c;
+    --bar:#3a6ea5; --bar2:#2a4d72;
+    --hot:#e0a458; --cold:#7c8798;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    color-scheme:dark;
+  }
+  @media(prefers-color-scheme:light){:root:not([data-theme="dark"]){
+    --bg:#f5f7fa; --panel:#fff; --panel2:#eef1f5; --line:#dbe1e9; --soft:#e7ecf2;
+    --ink:#131820; --ink2:#5a6675; --ink3:#8b96a6;
+    --accent:#128a5c; --accent-ink:#fff; --bar:#4a7fb5; --bar2:#8fb2d4;
+    --hot:#b8791f; --cold:#8b96a6; color-scheme:light}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
+    padding:5px 10px;border-radius:6px;cursor:pointer}
+  button:hover{border-color:var(--ink3)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.go{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:650}
+
+  header{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:9px 16px;background:color-mix(in srgb,var(--bg) 90%,transparent);
+    backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+  .grow{flex:1 1 auto}
+  .sub{color:var(--ink3);font-size:11.5px}
+
+  /* filter bar — chips grouped by dimension, OR within, AND across */
+  #filterbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:9px 16px;
+    border-bottom:1px solid var(--line);background:var(--panel);min-height:42px}
+  .fchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:20px;padding:3px 6px 3px 11px;font-size:12.5px}
+  .fchip b{font-weight:650;color:var(--ink2);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .fchip .x{cursor:pointer;color:var(--ink3);padding:0 4px;border-radius:50%}
+  .fchip .x:hover{color:var(--accent)}
+  .fchip .or{color:var(--ink3);font-size:11px}
+
+  main{max-width:1500px;margin:0 auto;padding:16px}
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 14px 12px;
+    position:relative;min-width:0}
+  .card.wide{grid-column:span 2}
+  .card.full{grid-column:1/-1}
+  .card.dragging{opacity:.35}
+  .card.over{outline:2px dashed var(--accent);outline-offset:2px}
+  .card h3{margin:0 0 2px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--ink2);padding-right:44px;display:flex;align-items:center;gap:7px}
+  .card .sub{margin-bottom:9px}
+  .card .tools{position:absolute;top:10px;right:10px;display:flex;gap:2px;opacity:0}
+  .card:hover .tools,.card:focus-within .tools{opacity:1}
+  .card .tools button{border:0;background:none;color:var(--ink3);padding:2px 5px;font-size:13px;line-height:1}
+  .card .tools button:hover{color:var(--ink)}
+  .grab{cursor:grab;letter-spacing:-2px}
+  .scope{font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:20px;
+    border:1px solid var(--line);color:var(--ink3);font-weight:600}
+  .scope.range{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .recon{margin-top:8px;padding-top:7px;border-top:1px solid var(--soft);font-size:11.5px;color:var(--ink3);
+    display:flex;flex-wrap:wrap;gap:4px 14px}
+  .recon b{color:var(--ink2);font-family:var(--mono);font-weight:600}
+
+  .bars{display:flex;flex-direction:column;gap:1px}
+  .bar-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+    padding:4px 6px;border-radius:5px;cursor:pointer;position:relative}
+  .bar-row:hover{background:var(--panel2)}
+  .bar-row.active{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+  .bar-row .label{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
+  .bar-row .count{font-family:var(--mono);font-size:11.5px;color:var(--ink2);z-index:1}
+  .bar-row .track{position:absolute;left:0;right:0;top:0;bottom:0;border-radius:5px;overflow:hidden}
+  .bar-row .fill{position:absolute;left:0;top:0;bottom:0;background:var(--bar);opacity:.30}
+  .bar-row.active .fill{background:var(--accent);opacity:.30}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--soft);
+    border-radius:9px;overflow:hidden}
+  .kpi{background:var(--panel);padding:11px 13px}
+  .kpi .k{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3)}
+  .kpi .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;
+    letter-spacing:-.02em;margin-top:3px}
+  .kpi .d{font-size:11px;margin-top:1px;font-family:var(--mono);color:var(--ink3)}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:right;padding:6px 9px;white-space:nowrap;font-size:12.5px}
+  th:first-child,td:first-child{text-align:left}
+  thead th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);
+    font-weight:650;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+  thead th:hover{color:var(--ink)}
+  tbody td{border-bottom:1px solid var(--soft);font-family:var(--mono)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr.tot td{border-top:1px solid var(--line);border-bottom:0;font-weight:700}
+  td.txt{font-family:var(--sans)}
+  td.name{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+  tr.click{cursor:pointer} tr.click:hover{background:var(--panel2)}
+  .tw{overflow-x:auto;max-height:420px;overflow-y:auto}
+
+  .ring{width:21px;height:21px;border-radius:50%;display:inline-grid;place-items:center;
+    font-size:9.5px;font-weight:700;font-family:var(--mono);border:2px solid var(--cold);color:var(--cold)}
+  .ring.w{border-color:var(--hot);color:var(--hot)}
+  .pill{display:inline-block;padding:0 7px;border-radius:20px;font-size:11px;background:var(--panel2);
+    color:var(--ink2);border:1px solid var(--line);font-family:var(--sans)}
+  .empty{color:var(--ink3);font-size:12.5px;padding:8px 2px}
+
+  .feed .dh{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding:8px 2px 3px}
+  .feed .ev{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:baseline;padding:3px 2px;font-size:12.5px}
+  .feed .ev .b{font-family:var(--mono);color:var(--ink2)}
+  .feed .ev .who{color:var(--ink3);font-size:11.5px}
+  .arrow{color:var(--ink3)}
+
+  /* activity calendar — a month grid you can read at a glance */
+  .actcal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .actcal .dow{font-size:9.5px;color:var(--ink3);text-align:center;text-transform:uppercase;padding-bottom:2px}
+  .actcal .cell{aspect-ratio:1;border-radius:6px;border:1px solid var(--line);background:var(--panel2);
+    position:relative;padding:3px 4px;cursor:pointer;min-height:44px}
+  .actcal .cell.blank{border:0;background:none;cursor:default}
+  .actcal .cell.sel{outline:2px solid var(--accent);outline-offset:-2px}
+  .actcal .cell .dn{font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
+  .actcal .cell .big{font-family:var(--mono);font-size:16px;font-weight:700;line-height:1.1}
+  .actcal .cell .em{font-size:9px;letter-spacing:-1px;position:absolute;bottom:3px;left:4px}
+  .actcal .cell.today{border-color:var(--accent)}
+  .daydetail{margin-top:10px;border-top:1px solid var(--soft);padding-top:8px}
+
+  /* calendar */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:grid;place-items:center}
+  .scrim[hidden]{display:none}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);width:min(660px,94vw)}
+  .modal h3{margin:0 0 11px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px}
+  .presets button{font-size:12px;border-radius:20px;padding:4px 11px}
+  .cals{display:flex;gap:16px;flex-wrap:wrap}
+  .cal{flex:1 1 270px}
+  .cal .mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:600;font-size:12.5px}
+  .grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .grid7 .dow{font-size:9.5px;color:var(--ink3);text-align:center;padding:2px 0;text-transform:uppercase}
+  .day{aspect-ratio:1;border:0;background:none;border-radius:6px;font:inherit;font-size:12px;
+    color:var(--ink);cursor:pointer;font-family:var(--mono);padding:0}
+  .day:hover{background:var(--panel2)}
+  .day.in{background:color-mix(in srgb,var(--accent) 20%,transparent)}
+  .day.edge{background:var(--accent);color:var(--accent-ink);font-weight:700}
+  .day.future{opacity:.22;cursor:not-allowed}
+  .modal .foot{display:flex;gap:8px;align-items:center;margin-top:13px;padding-top:11px;border-top:1px solid var(--soft)}
+  .pop{position:fixed;z-index:70;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:7px;min-width:230px;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+  .pop .row{display:flex;align-items:center;gap:9px;padding:5px 7px;border-radius:5px;font-size:12.5px;cursor:pointer}
+  .pop .row:hover{background:var(--panel2)}
+  footer{max-width:1500px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);font-size:11.5px;line-height:1.65}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header>
+  <h1>Ovia OS</h1>
+  <button id="dateBtn" class="go">Last 7 days</button>
+  <span class="sub" id="rangeLab"></span>
+  <span class="grow"></span>
+  <span class="sub" id="fresh"></span>
+  <button id="cardsBtn">Cards</button>
+  <button id="update">Update now</button>
+  <button id="export">Export</button>
+</header>
+<div id="filterbar"></div>
+<main><div id="grid"></div></main>
+<footer id="prov"></footer>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal" role="dialog" aria-label="Date range">
+    <h3>Date range</h3>
+    <div class="presets" id="presets"></div>
+    <div class="cals" id="cals"></div>
+    <div class="foot"><span class="sub" id="pickLab"></span><span class="grow"></span>
+      <button id="cancel">Cancel</button><button class="go" id="apply">Apply</button></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   OVIA MASTER OS — viewer.
+
+   THE INTERACTION MODEL, ported from raw/survey-viewer-as-example.html: every
+   dimension is a card of clickable bars. Clicking a bar adds a filter. Several
+   clicks in ONE card = OR; across cards = AND. `rowsFor(exclude)` keeps a card
+   showing all of its own options, which is what makes multi-select usable.
+
+   THE DATA. Nothing on this page is invented. The payload is built by the
+   Master OS Apps Script from Meta (ad level, time_increment=1 — one row per ad
+   per day, which is what lets any date range be answered without re-pulling),
+   Asana (roles, status, transitions) and the Growth Guide roadmap (format, ad
+   type, results). Two ways it arrives, in order:
+     1. web app — doGet() replaces the placeholder below with the real JSON, so
+        the page is a single request and needs no public hosting
+     2. static  — falls back to fetch('./os-data.json') next to this file
+
+   SPEND IS NEVER PRE-ATTRIBUTED. The payload carries spend per key per day plus
+   each key's two owners; the strategist and editor tables are computed
+   separately from those same rows. They are independent partitions of one pot,
+   a person legitimately appears in both with different numbers, and summing
+   them double-counts. That bug has appeared three times — see PLAN.md §15.
+   ========================================================================== */
+const BOOT = /*__OS_DATA__*/null;
+
+/* Asana's own emoji, so a pipeline stage reads at a glance rather than as prose.
+   The archived options are here on purpose: they are disabled in Asana but they
+   still appear in old stories, so the viewer must render them. */
+const SE={"Writing Copy":"📝","Ready To Be Edited":"⚠️","In Progress":"🎥","Pending Review":"⏱️",
+  "In Revisions":"🚨","Ready For Launch":"✅","Launched":"🚀",
+  "Briefing":"✉️","Not Started":"◦","Ready To Edit":"🎬"};
+const STAGE=["Writing Copy","Ready To Be Edited","In Progress","Pending Review",
+  "In Revisions","Ready For Launch","Launched"];
+const em=st=>st?((SE[st]||"")+" "+st).trim():"—";
+const nameOf=x=>x||"—";
+
+let DATA=null,TODAY="",ROWS=[],EVENTS=[],SPEND=[],KEYS={},STATS={};
+
+/* ---------------- spend attribution ----------------
+   A spend row carries a KEY, never a person: "128" (a batch), "cb:CB37-D" (a
+   content batch, which has no owner by design), "ov:Bounty" (a config
+   override) or "other:Trials". KEYS holds each key's label and its strategist
+   and editor as resolved by the classifier in the script — the viewer never
+   re-parses an ad name, so there is exactly one place that logic lives. */
+const keyMeta=k=>KEYS[k]||{kind:"other",label:k,s:null,e:null,n:null};
+
+function inRange(d){return d>=RANGE.from&&d<=RANGE.to;}
+function spendInRange(){return SPEND.filter(r=>inRange(r.d));}
+
+/** Money grouped by the holder of ONE role. Called once per role, never merged. */
+function spendByRole(role,rowSet){
+  const ok=rowSet?new Set(rowSet.map(r=>r.n)):null;
+  const by={};
+  spendInRange().forEach(r=>{
+    const m=keyMeta(r.k),who=role==="s"?m.s:m.e;
+    if(!who)return;                       // content batches and orphans have no owner
+    if(ok&&(m.n==null||!ok.has(m.n)))return;   // respect the current filters
+    const o=by[who]=by[who]||{spend:0,purch:0,value:0,n:new Set()};
+    o.spend+=r.s;o.purch+=r.p;o.value+=r.v;if(m.n!=null)o.n.add(m.n);
+  });
+  return by;
+}
+
+/** Where the account's money sits. The gap between account and owned is not a
+    rounding error — it is content batches, which nobody is credited for. */
+function spendSplit(){
+  const t={acct:0,owned:0,content:0,orphan:0,other:0,purch:0,value:0};
+  spendInRange().forEach(r=>{
+    const m=keyMeta(r.k);t.acct+=r.s;t.purch+=r.p;t.value+=r.v;
+    if(m.kind==="cb")t.content+=r.s;
+    else if(m.kind==="orphan")t.orphan+=r.s;
+    else if(m.kind==="batch"||m.kind==="override")t.owned+=r.s;
+    else t.other+=r.s;
+  });
+  return t;
+}
+
+/* ---------------- state ---------------- */
+const iso=d=>d.toISOString().slice(0,10);
+const addD=(s,n)=>iso(new Date(new Date(s+"T12:00:00Z").getTime()+n*864e5));
+const dBetween=(a,b)=>Math.round((new Date(b+"T12:00:00Z")-new Date(a+"T12:00:00Z"))/864e5);
+let RANGE={from:"",to:""}, LABEL="Last 7 days";   // set by adopt(), once data lands
+let FILTERS=[];            // {dim,val}
+let hidden=new Set(), order=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const usd=n=>"$"+Math.round(n).toLocaleString();
+
+/* ---------------- dimensions ----------------
+   Adding a view = adding one entry here. That is the whole extension story. */
+const DIMS=[
+ {k:"s",      t:"Strategist", get:r=>nameOf(r.s)},
+ {k:"e",      t:"Editor",     get:r=>r.e||null},
+ {k:"st",     t:"Status",     get:r=>em(r.st), order:STAGE.map(em)},
+ {k:"bt",     t:"Brief type", get:r=>r.bt||null},
+ {k:"fm",     t:"Format",     get:r=>r.fm||null},
+ {k:"av",     t:"Avatar",     get:r=>r.av||null},
+ {k:"aw",     t:"Awareness",  get:r=>r.aw||null},
+ {k:"res",    t:"Result",     get:r=>r.res||null},
+ /* No transition date and no snapshot yet means we do not know how long it has
+    sat there. Say so — a guessed 0 reads as "moved today", which is worse. */
+ {k:"age",    t:"Days in status", get:r=>{const d=r.age;
+            if(d==null) return "unknown";
+            return d<=1?"0–1 days":d<=3?"2–3 days":d<=6?"4–6 days":d<=13?"7–13 days":"14+ days";}},
+ {k:"due",    t:"Due",        get:r=>!r.due?"no due date":r.due<TODAY?"overdue":r.due<=addD(TODAY,3)?"next 3 days":"later"}
+];
+const dimOf=k=>DIMS.find(d=>d.k===k);
+
+/* rows passing all filters EXCEPT those on `exclude` — so a card keeps showing
+   all its own options while you multi-select within it. */
+function rowsFor(exclude){
+  const by={};
+  FILTERS.forEach(f=>{ if(f.dim===exclude)return; (by[f.dim]=by[f.dim]||[]).push(f.val); });
+  const groups=Object.entries(by);
+  if(!groups.length) return ROWS;
+  return ROWS.filter(r=>groups.every(([dim,vals])=>vals.includes(dimOf(dim).get(r))));
+}
+const rows=()=>rowsFor(null);
+const has=(dim,val)=>FILTERS.some(f=>f.dim===dim&&f.val===val);
+function toggle(dim,val){
+  const i=FILTERS.findIndex(f=>f.dim===dim&&f.val===val);
+  if(i>=0) FILTERS.splice(i,1); else FILTERS.push({dim,val});
+  draw();
+}
+
+/* ---------------- cards ---------------- */
+const CARDS=[
+ {id:"kpi",   t:"At a glance", cls:"full", render:kpiCard},
+ {id:"spendS", t:"Spend by strategist", cls:"wide", scope:"range"},
+ {id:"spendE", t:"Spend by editor", cls:"wide", scope:"range"},
+ {id:"out",   t:"Launched by role", cls:"wide", scope:"range", render:outCard},
+ ...DIMS.map(d=>({id:"dim:"+d.k, t:d.t, cls:"", scope:"now"})),
+ {id:"board", t:"Batches", cls:"full", scope:"now", render:boardCard},
+ {id:"feed",  t:"What changed", cls:"wide", scope:"range", render:feedCard},
+ {id:"cycle", t:"Cycle time", cls:"wide", render:cycleCard}
+];
+const cardById=id=>CARDS.find(c=>c.id===id);
+function cardOrder(){ if(!order) order=CARDS.map(c=>c.id); return order.filter(id=>cardById(id)); }
+
+function draw(){
+  $("#rangeLab").textContent = RANGE.from===RANGE.to ? RANGE.from
+    : RANGE.from+" → "+RANGE.to+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d";
+  $("#dateBtn").textContent = LABEL;
+  $("#fresh").textContent = DATA&&DATA.generated ? "pulled "+DATA.generated.slice(0,16).replace("T"," ")+" ET" : "";
+  drawFilters();
+  const g=$("#grid"); g.innerHTML="";
+  cardOrder().forEach(id=>{
+    if(hidden.has(id))return;
+    const c=cardById(id), el=document.createElement("div");
+    el.className="card "+(c.cls||""); el.dataset.card=id; el.draggable=false;
+    const sc=c.scope==="now"?`<span class="scope">now</span>`
+            :c.scope==="range"?`<span class="scope range">in range</span>`:"";
+    el.innerHTML=`<div class="tools"><button class="grab" data-grab title="Drag">⠿</button>
+      <button data-hide="${id}" title="Hide">✕</button></div>
+      <h3>${esc(c.t)}${sc}</h3><div class="sub"></div><div class="body"></div>`;
+    g.appendChild(el);
+    const b=el.querySelector(".body"), sb=el.querySelector(".sub");
+    if(c.id==="spendS") spendCard(b,"s",sb); else if(c.id==="spendE") spendCard(b,"e",sb);
+    else if(c.id.startsWith("dim:")) barCard(b,dimOf(c.id.slice(4)),sb);
+    else c.render(b,sb);
+  });
+  $("#cardsBtn").textContent = hidden.size?`Cards (${hidden.size} hidden)`:"Cards";
+  const s=STATS||{};
+  $("#prov").innerHTML="Click any bar to filter · several in one card = OR · across cards = AND · "
+    +"drag ⠿ to reorder · ✕ to hide. Cards marked <b>in range</b> count events inside the selected dates; "
+    +"cards marked <b>now</b> are a snapshot of this moment and ignore the range.<br>"
+    +`Meta ad-level daily spend, Asana and the Growth Guide roadmap · ${ROWS.length} batches · `
+    +`${SPEND.length} spend rows over ${DATA?DATA.days:0} days · ${EVENTS.length} transitions`
+    +(s.storiesCapped?` · <b>${s.storiesCapped} tasks' history not fetched this run</b> (time budget)`:"")
+    +(s.unmatchedSpend?` · ${usd(s.unmatchedSpend)} of spend matched no batch or content batch`:"");
+}
+
+function drawFilters(){
+  const el=$("#filterbar");
+  if(!FILTERS.length){ el.innerHTML=`<span class="sub">No filters — click any bar to start. Several in one card combine as OR; across cards as AND.</span>`; return; }
+  const by={}; FILTERS.forEach(f=>(by[f.dim]=by[f.dim]||[]).push(f.val));
+  el.innerHTML=Object.entries(by).map(([dim,vals])=>
+    `<span class="fchip"><b>${esc(dimOf(dim).t)}</b>`+
+    vals.map(v=>`${esc(v)}<span class="x" data-rm="${esc(dim)}|${esc(v)}">✕</span>`).join(`<span class="or">or</span>`)+
+    `</span>`).join("")+`<button id="clearAll">Clear all</button>`;
+}
+
+function barCard(body,d,sub){
+  const rs=rowsFor(d.k), counts={};
+  rs.forEach(r=>{const v=d.get(r); if(v==null)return; counts[v]=(counts[v]||0)+1;});
+  let ent=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if(d.order) ent.sort((a,b)=>d.order.indexOf(a[0])-d.order.indexOf(b[0]));
+  if(!ent.length){ body.innerHTML=`<div class="empty">No values</div>`; return; }
+  const max=ent[0][1], tot=rs.length;
+  if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b> batches · ${ent.length} values`;
+  body.className="body bars";
+  body.innerHTML=ent.map(([k,c])=>`<div class="bar-row${has(d.k,k)?" active":""}" data-dim="${esc(d.k)}" data-val="${esc(k)}">
+     <div class="track"><div class="fill" style="width:${100*c/max}%"></div></div>
+     <span class="label" title="${esc(k)}">${esc(k)}</span>
+     <span class="count">${c} · ${Math.round(100*c/tot)}%</span></div>`).join("");
+}
+
+/** Batches that went live inside the range. A launch is an EVENT, so it is
+    range-scoped; Day Launched is rule-set by Asana the moment Status flips, and
+    a real transition story is used when one was fetched. */
+function launchedInRange(rowSet){
+  const byEvent=new Set(EVENTS.filter(e=>inRange(e.d)&&e.to==="Launched").map(e=>e.n));
+  return rowSet.filter(r=>byEvent.has(r.n)||(r.launched&&inRange(r.launched)));
+}
+
+function kpiCard(body,sub){
+  const t=spendSplit(), rs=rows(), live=rs.filter(r=>r.st!=="Launched");
+  const mine=spendByRole("s",rs), team=Object.values(mine).reduce((a,o)=>a+o.spend,0);
+  const winners=rs.filter(r=>r.res&&r.res!=="Losing Ad").length;
+  const scored=rs.filter(r=>r.res).length;
+  const filtered=FILTERS.length>0;
+  body.className="body kpis";
+  body.innerHTML=[
+   ["Account spend",usd(t.acct),(dBetween(RANGE.from,RANGE.to)+1)+" days, all ads"],
+   [filtered?"Spend, filtered":"Batch spend",usd(team),filtered?"matching batches":"attributable to a strategist"],
+   ["Purchases",t.purch.toLocaleString(),"account"],
+   ["CPA",t.purch?"$"+(t.acct/t.purch).toFixed(2):"—","account"],
+   ["ROAS",t.acct?(t.value/t.acct).toFixed(2):"—","account"],
+   ["Content",t.acct?(t.content/t.acct*100).toFixed(1)+"%":"—","unowned"],
+   ["Launched",launchedInRange(rs).length,"in range"],
+   ["In flight",live.length,"right now"],
+   ["Hit rate",scored?(winners/scored*100).toFixed(1)+"%":"—",winners+"/"+scored+" scored"],
+   ["Matching",rs.length,"of "+ROWS.length+" batches"]
+  ].map(([k,v,d])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
+  sub.textContent="";
+}
+
+function spendCard(body,role,sub){
+  /* One role per call. The strategist table and the editor table are built from
+     the same spend rows by two different joins and must never be added
+     together — a person appears in both with different numbers and that is
+     correct, not a duplicate. */
+  const by=spendByRole(role,rows());
+  const list=Object.entries(by).sort((a,b)=>b[1].spend-a[1].spend);
+  const tot=list.reduce((a,[,o])=>a+o.spend,0);
+  body.innerHTML=`<div class="tw"><table><thead><tr><th>Person</th><th>Spend</th><th>Share</th>
+      <th>Batches</th><th>Purch</th><th>CPA</th><th>ROAS</th></tr></thead><tbody>`
+   +(list.length?list.map(([w,o])=>`<tr class="click" data-dim="${role}" data-val="${esc(w)}">
+      <td class="txt">${esc(w)}</td><td>${usd(o.spend)}</td>
+      <td>${tot?(o.spend/tot*100).toFixed(1):"0.0"}%</td><td>${o.n.size}</td><td>${o.purch}</td>
+      <td>${o.purch?"$"+(o.spend/o.purch).toFixed(2):"—"}</td>
+      <td>${o.spend?(o.value/o.spend).toFixed(2):"—"}</td></tr>`).join("")
+     :`<tr><td colspan="7" class="empty">No spend for these filters in this range.</td></tr>`)
+   +`<tr class="tot"><td class="txt">All ${role==="s"?"strategists":"editors"}</td><td>${usd(tot)}</td><td>100%</td>
+      <td></td><td>${list.reduce((a,[,o])=>a+o.purch,0)}</td><td></td><td></td></tr></tbody></table></div>`;
+  const t=spendSplit();
+  body.insertAdjacentHTML("beforeend",
+    `<div class="recon"><span>Account <b>${usd(t.acct)}</b></span>
+      <span>This role <b>${usd(tot)}</b> (${t.acct?(tot/t.acct*100).toFixed(1):"0.0"}%)</span>
+      <span>Content, unowned <b>${usd(t.content)}</b> (${t.acct?(t.content/t.acct*100).toFixed(1):"0.0"}%)</span>
+      ${t.orphan?`<span>Not in Asana <b>${usd(t.orphan)}</b></span>`:""}
+      ${t.other?`<span>Unclassified <b>${usd(t.other)}</b></span>`:""}</div>`);
+  if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${usd(tot)}</b>`
+    +` on batches owned by ${role==="s"?"a strategist":"an editor"}`
+    +(FILTERS.length?" · filtered":"")
+    +` · content batches have no owner, so this never equals account spend`;
+}
+
+function outCard(body,sub){
+  /* Was counting EVERY batch regardless of date — the number Leo caught. Output is
+     an EVENT (a batch went live), so it must be scoped to the range. For Launched
+     rows `since` is the launch date. */
+  const rs=launchedInRange(rows());
+  const mk=(roleKey,label)=>{
+    const by={};
+    rs.forEach(r=>{const w=r[roleKey]; if(!w)return;
+      const o=by[w]=by[w]||{ideation:0,iteration:0,imitation:0,n:0};
+      if(o[r.bt]!==undefined)o[r.bt]++; o.n++;});
+    const list=Object.entries(by).sort((a,b)=>b[1].n-a[1].n);
+    const t={ideation:0,iteration:0,imitation:0,n:0};
+    list.forEach(([,o])=>["ideation","iteration","imitation","n"].forEach(k=>t[k]+=o[k]));
+    return `<table><thead><tr><th>${label}</th><th>💡</th><th>🔄</th><th>🎭</th><th>Total</th></tr></thead><tbody>`
+      +list.map(([w,o])=>`<tr class="click" data-dim="${roleKey}" data-val="${esc(w)}">
+         <td class="txt">${esc(w)}</td><td>${o.ideation||"·"}</td><td>${o.iteration||"·"}</td>
+         <td>${o.imitation||"·"}</td><td><b>${o.n}</b></td></tr>`).join("")
+      +`<tr class="tot"><td class="txt">All ${label.toLowerCase()}s</td><td>${t.ideation}</td>
+         <td>${t.iteration}</td><td>${t.imitation}</td><td>${t.n}</td></tr></tbody></table>`;
+  };
+  body.innerHTML=rs.length
+    ? `<div class="tw">${mk("s","Strategist")}<div style="height:10px"></div>${mk("e","Editor")}</div>`
+    : `<div class="empty">Nothing launched in this range with the current filters.</div>`;
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b>`
+    +` batches launched ${RANGE.from} → ${RANGE.to} · role totals on the bottom line`;
+}
+
+let SORT={k:"age",dir:-1}, BOARD="live";
+function boardCard(body,sub){
+  /* Default is what is IN FLIGHT, because that is the question the board
+     answers on a Tuesday morning. The other two scopes are one click away
+     rather than a setting, since the right default was never settled. */
+  const all=rows();
+  const changed=new Set(EVENTS.filter(e=>inRange(e.d)).map(e=>e.n));
+  const rs=(BOARD==="live"?all.filter(r=>r.st!=="Launched")
+           :BOARD==="changed"?all.filter(r=>changed.has(r.n))
+           :all).slice();
+  rs.sort((a,b)=>{let x=a[SORT.k],y=b[SORT.k];
+    if(x==null)x=SORT.dir<0?-Infinity:Infinity; if(y==null)y=SORT.dir<0?-Infinity:Infinity;
+    return (x>y?1:x<y?-1:0)*SORT.dir;});
+  const cols=[["n","Batch"],["st","Status"],["age","Days"],["e","Editor"],["s","Strategist"],
+    ["bt","Type"],["fm","Format"],["res","Result"],["due","Due"]];
+  const tabs=[["live","In flight"],["changed","Changed in range"],["all","All"]]
+    .map(([k,l])=>`<button data-board="${k}"${BOARD===k?' class="go"':""}>${l}</button>`).join(" ");
+  body.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:8px">${tabs}</div>`
+   +`<div class="tw"><table><thead><tr>${cols.map(([k,l])=>`<th data-sort="${k}">${l}</th>`).join("")}</tr></thead><tbody>`
+   +(rs.length?rs.map(r=>`<tr>
+      <td class="txt name"><a href="${esc(r.url||"#")}" target="_blank" rel="noopener"
+        style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink3)">#${r.n} ${esc(r.name)}</a></td>
+      <td class="txt"><span class="pill">${esc(em(r.st))}</span></td>
+      <td>${r.st==="Launched"?"—":r.age==null?`<span class="sub" title="no transition or snapshot yet">—</span>`
+          :`<span class="ring${r.age>=4?" w":""}"${r.sinceEst?' title="inferred from daily snapshots, not a transition"':""}>${r.age}${r.sinceEst?"*":""}</span>`}</td>
+      <td class="txt">${esc(nameOf(r.e))}</td><td class="txt" style="color:var(--ink2)">${esc(nameOf(r.s))}</td>
+      <td class="txt">${esc(r.bt||"·")}</td><td class="txt">${esc(r.fm||"·")}</td>
+      <td class="txt">${r.res?esc(r.res):"·"}</td>
+      <td class="txt" style="color:${r.due&&r.due<TODAY&&r.st!=="Launched"?"var(--hot)":"var(--ink3)"}">${r.due||"—"}</td>
+     </tr>`).join(""):`<tr><td colspan="9" class="empty">Nothing matches.</td></tr>`)
+   +`</tbody></table></div>`;
+  sub.innerHTML=rs.length+" of "+ROWS.length+" batches · click a batch to open it in Asana · "
+   +"click a header to sort · <b>days</b> is a NOW figure, not range-scoped"
+   +(rs.some(r=>r.sinceEst&&r.st!=="Launched")?" · * inferred from snapshots":"");
+}
+
+let calSel=null;
+function feedCard(body,sub){
+  /* Leo: "why is it not a calendar? It's really difficult to view this as just text."
+     A month grid of transition counts — the shape of the month is visible before
+     any reading happens. Click a day for its events. */
+  const ok=new Set(rows().map(r=>r.n));
+  const evs=EVENTS.filter(e=>ok.has(e.n));
+  const byDay={}; evs.forEach(e=>(byDay[e.d]=byDay[e.d]||[]).push(e));
+  const m=new Date(RANGE.to+"T12:00:00Z"), y=m.getUTCFullYear(), mo=m.getUTCMonth();
+  const start=(new Date(Date.UTC(y,mo,1)).getUTCDay()+6)%7, dim=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
+  const inR=evs.filter(e=>inRange(e.d)).length;
+
+  let cells="";
+  for(let i=0;i<start;i++) cells+=`<div class="cell blank"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const list=byDay[ds]||[], n=list.length;
+    const lit=inRange(ds);
+    const bg=n?`background:color-mix(in srgb,var(--accent) ${Math.min(10+n*11,58)}%,var(--panel2))`:"";
+    const emo=[...new Set(list.map(e=>SE[e.to]||""))].join("");
+    cells+=`<div class="cell${calSel===ds?" sel":""}${ds===TODAY?" today":""}" data-cal="${ds}"
+      style="${bg};${lit?"":"opacity:.35"}" title="${ds}: ${n} change${n===1?"":"s"}">
+      <div class="dn">${d}</div>${n?`<div class="big">${n}</div><div class="em">${emo}</div>`:""}</div>`;
+  }
+  const sel=calSel&&byDay[calSel]?byDay[calSel]:null;
+  body.innerHTML=`<div class="actcal">${["m","t","w","t","f","s","s"].map(x=>`<div class="dow">${x}</div>`).join("")}${cells}</div>`
+   +(sel?`<div class="daydetail feed"><div class="dh">${new Date(calSel+"T12:00:00Z").toLocaleDateString("en",{weekday:"long",month:"short",day:"numeric",timeZone:"UTC"})} · ${sel.length} change${sel.length===1?"":"s"}</div>`
+      +sel.map(e=>{const bb=ROWS.find(x=>x.n===e.n);
+        return `<div class="ev"><span class="b">#${e.n}</span>
+          <span>${e.from?esc(em(e.from))+' <span class="arrow">→</span> ':""}<b>${esc(em(e.to))}</b>
+          ${bb?`<span class="who"> ${esc(bb.name).slice(0,32)}</span>`:""}</span>
+          <span class="who">${e.by?esc(e.by):"Asana rule"}</span></div>`;}).join("")+`</div>`
+     :`<div class="daydetail sub">Click a day for its changes. Dimmed days are outside the selected range.</div>`);
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${inR}</b> changes in range · ${evs.length} shown on the month`;
+}
+
+function cycleCard(body,sub){
+  /* Real elapsed time, not a stand-in: Day Started and Day Launched are both
+     set by an Asana rule the moment Status flips, so they are retroactive and
+     cost no story calls. Edit time is start→launch; the second column is how
+     that landed against the due date, negative meaning early. */
+  const done=launchedInRange(rows()).filter(r=>r.launched&&r.started);
+  const mk=(key,label)=>{
+    const by={};
+    done.forEach(r=>{const k=r[key]||"(blank)";
+      const o=by[k]=by[k]||{edit:[],late:[]};
+      o.edit.push(dBetween(r.started,r.launched));
+      if(r.due)o.late.push(dBetween(r.due,r.launched));});
+    const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+    const list=Object.entries(by).map(([k,o])=>[k,o.edit.length,avg(o.edit),avg(o.late)])
+      .sort((a,b)=>b[2]-a[2]);
+    return `<table><thead><tr><th>${label}</th><th>n</th><th>Edit days</th><th>vs due</th></tr></thead><tbody>`
+      +(list.length?list.map(([k,n,e,l])=>`<tr class="click" data-dim="${key}" data-val="${esc(k)}">
+          <td class="txt">${esc(k)}</td><td>${n}</td><td>${e.toFixed(1)}</td>
+          <td>${l==null?"—":(l>0?"+":"")+l.toFixed(1)}</td></tr>`).join("")
+        :`<tr><td colspan="4" class="empty">Nothing launched in this range with these filters.</td></tr>`)
+      +`</tbody></table>`;
+  };
+  body.innerHTML=`<div class="tw">${mk("bt","Brief type")}<div style="height:10px"></div>${mk("fm","Format")}</div>`;
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${done.length}</b>`
+   +` launched in range with both dates · edit days = Day Started → Day Launched · vs due is + late, − early`;
+}
+
+/* ---------------- calendar ----------------
+   "Last N days" ENDS YESTERDAY, exactly like Meta's own preset. Today is a
+   partial day and including it made last-7 read $42,217 against Ads Manager's
+   $38,637 — the same money, a different window. Matching Meta's convention is
+   what lets a number here be checked against Ads Manager without arithmetic.
+   Today is its own preset when you do want the partial day. */
+let pick={from:null,to:null}, calM=new Date(TODAY+"T12:00:00Z");
+const PRESETS=[["Today",0],["Last 3 days",3],["Last 7 days",7],["Last 14 days",14],["Last 30 days",30],["Last 90 days",90]];
+function openCal(){
+  pick={...RANGE}; calM=new Date(RANGE.to+"T12:00:00Z"); calM.setUTCDate(1);
+  $("#presets").innerHTML=PRESETS.map(([l,d])=>`<button data-p="${d}">${l}</button>`).join("")
+   +`<button data-w="this">This week</button><button data-w="last">Last week</button><button data-w="month">This month</button>`;
+  drawCal(); $("#scrim").hidden=false;
+}
+function drawCal(){
+  const prev=new Date(calM); prev.setUTCMonth(prev.getUTCMonth()-1);
+  $("#cals").innerHTML=[prev,calM].map((m,i)=>calHtml(m,i)).join("");
+  $("#pickLab").textContent=pick.from?(pick.to?pick.from+" → "+pick.to:pick.from+" → …"):"pick a start day";
+}
+function calHtml(m,idx){
+  const y=m.getUTCFullYear(),mo=m.getUTCMonth();
+  const start=(new Date(Date.UTC(y,mo,1)).getUTCDay()+6)%7, dim=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
+  let c=""; for(let i=0;i<start;i++)c+="<span></span>";
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const fut=ds>TODAY, edge=ds===pick.from||ds===pick.to,
+      mid=pick.from&&pick.to&&ds>pick.from&&ds<pick.to;
+    c+=`<button class="day${fut?" future":""}${edge?" edge":mid?" in":""}" ${fut?"disabled":""} data-d="${ds}">${d}</button>`;
+  }
+  return `<div class="cal"><div class="mh">${idx===0?`<button data-nav="-1">‹</button>`:"<span></span>"}
+    <span>${m.toLocaleDateString("en",{month:"long",year:"numeric",timeZone:"UTC"})}</span>
+    ${idx===1?`<button data-nav="1">›</button>`:"<span></span>"}</div>
+    <div class="grid7">${["m","t","w","t","f","s","s"].map(x=>`<span class="dow">${x}</span>`).join("")}${c}</div></div>`;
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener("click",e=>{
+  const cal=e.target.closest("[data-cal]");
+  if(cal){calSel=calSel===cal.dataset.cal?null:cal.dataset.cal;draw();return;}
+  const bd=e.target.closest("[data-board]"); if(bd){BOARD=bd.dataset.board;draw();return;}
+  const bar=e.target.closest(".bar-row"); if(bar){toggle(bar.dataset.dim,bar.dataset.val);return;}
+  const row=e.target.closest("tr.click"); if(row){toggle(row.dataset.dim,row.dataset.val);return;}
+  const rm=e.target.closest("[data-rm]");
+  if(rm){const [d,v]=rm.dataset.rm.split("|");toggle(d,v);return;}
+  if(e.target.id==="clearAll"){FILTERS=[];draw();return;}
+  const h=e.target.closest("[data-hide]"); if(h){hidden.add(h.dataset.hide);draw();return;}
+  const th=e.target.closest("[data-sort]");
+  if(th){const k=th.dataset.sort;SORT={k,dir:SORT.k===k?-SORT.dir:-1};draw();return;}
+  const day=e.target.closest(".day[data-d]");
+  if(day){const d=day.dataset.d;
+    if(!pick.from||(pick.from&&pick.to))pick={from:d,to:null};
+    else if(d<pick.from)pick={from:d,to:pick.from}; else pick.to=d;
+    drawCal();return;}
+  const nav=e.target.closest("[data-nav]");
+  if(nav){calM.setUTCMonth(calM.getUTCMonth()+ +nav.dataset.nav);drawCal();return;}
+  const p=e.target.closest("[data-p]");
+  if(p){const n=+p.dataset.p;
+    pick = n===0 ? {from:TODAY,to:TODAY}                        // Today, partial
+                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     // N days ending yesterday
+    drawCal();return;}
+  const w=e.target.closest("[data-w]");
+  if(w){const dow=(new Date(TODAY+"T12:00:00Z").getUTCDay()+6)%7,mon=addD(TODAY,-dow);
+    if(w.dataset.w==="this")pick={from:mon,to:TODAY};
+    if(w.dataset.w==="last")pick={from:addD(mon,-7),to:addD(mon,-1)};
+    if(w.dataset.w==="month")pick={from:TODAY.slice(0,8)+"01",to:TODAY};
+    drawCal();return;}
+});
+/* drag to reorder — only from the ⠿ handle, so text stays selectable */
+let dragId=null;
+document.addEventListener("mousedown",e=>{
+  const c=e.target.closest(".card"); if(c) c.draggable=!!e.target.closest("[data-grab]");
+});
+document.addEventListener("dragstart",e=>{const c=e.target.closest(".card");if(!c)return;
+  dragId=c.dataset.card;c.classList.add("dragging");e.dataTransfer.effectAllowed="move";});
+document.addEventListener("dragover",e=>{const c=e.target.closest(".card");
+  if(!c||!dragId||c.dataset.card===dragId)return;e.preventDefault();
+  document.querySelectorAll(".card.over").forEach(x=>x.classList.remove("over"));c.classList.add("over");});
+document.addEventListener("drop",e=>{const c=e.target.closest(".card");
+  document.querySelectorAll(".card.over").forEach(x=>x.classList.remove("over"));
+  if(!c||!dragId||c.dataset.card===dragId)return;e.preventDefault();
+  const o=cardOrder().filter(x=>x!==dragId);o.splice(o.indexOf(c.dataset.card),0,dragId);order=o;draw();});
+document.addEventListener("dragend",()=>{dragId=null;
+  document.querySelectorAll(".card").forEach(x=>{x.draggable=false;x.classList.remove("dragging","over");});});
+
+$("#dateBtn").onclick=openCal;
+$("#cancel").onclick=()=>$("#scrim").hidden=true;
+$("#apply").onclick=()=>{if(pick.from){RANGE={from:pick.from,to:pick.to||pick.from};
+  const n=dBetween(RANGE.from,RANGE.to)+1;
+  LABEL = RANGE.from===TODAY&&RANGE.to===TODAY ? "Today"
+        : RANGE.to===addD(TODAY,-1) ? "Last "+n+" days"          // Meta convention
+        : RANGE.from+" → "+RANGE.to;
+  draw();}
+  $("#scrim").hidden=true;};
+$("#scrim").onclick=e=>{if(e.target.id==="scrim")$("#scrim").hidden=true;};
+$("#cardsBtn").onclick=e=>{
+  const old=document.querySelector(".pop"); if(old){old.remove();return;}
+  const pop=document.createElement("div");pop.className="pop";
+  const r=e.target.getBoundingClientRect();pop.style.top=(r.bottom+7)+"px";pop.style.left=Math.max(8,r.right-250)+"px";
+  pop.innerHTML=CARDS.map(c=>`<label class="row"><input type="checkbox" data-c="${c.id}" ${hidden.has(c.id)?"":"checked"}> ${esc(c.t)}</label>`).join("")
+   +`<div class="row" style="border-top:1px solid var(--soft);margin-top:5px;padding-top:8px">
+      <button id="showAll" style="flex:1">Show all</button><button id="resetOrder" style="flex:1">Reset order</button></div>`;
+  document.body.appendChild(pop);
+  pop.querySelectorAll("input[data-c]").forEach(cb=>cb.onchange=()=>{
+    cb.checked?hidden.delete(cb.dataset.c):hidden.add(cb.dataset.c);draw();});
+  pop.querySelector("#showAll").onclick=()=>{hidden.clear();pop.remove();draw();};
+  pop.querySelector("#resetOrder").onclick=()=>{order=null;pop.remove();draw();};
+  setTimeout(()=>{const cl=ev=>{if(!pop.contains(ev.target)){pop.remove();document.removeEventListener("click",cl);}};
+    document.addEventListener("click",cl);},0);
+};
+/* Update now. Served by the web app, the page can call the script directly and
+   redraw in place; opened as a static file it can only re-read the JSON beside
+   it. The pull takes a minute or two — Meta throttles, so it is one pull, not
+   one per filter. */
+const HOSTED = typeof google!=="undefined" && google.script && google.script.run;
+$("#update").onclick=()=>{
+  const b=$("#update"), was=b.textContent;
+  if(HOSTED){
+    b.disabled=true; b.textContent="Pulling… ~2 min";
+    google.script.run
+      .withSuccessHandler(j=>{b.disabled=false;b.textContent=was;adopt(JSON.parse(j));draw();})
+      .withFailureHandler(err=>{b.disabled=false;b.textContent=was;
+        alert("Pull failed:\n"+(err&&err.message||err)+"\n\nThe page is still showing the last good data.");})
+      .osUpdateNow();
+  } else {
+    b.disabled=true; b.textContent="Reloading…";
+    fetch("./os-data.json?v="+Date.now()).then(r=>r.json())
+      .then(d=>{b.disabled=false;b.textContent=was;adopt(d);draw();})
+      .catch(e=>{b.disabled=false;b.textContent=was;alert("Could not reload os-data.json: "+e.message);});
+  }
+};
+$("#export").onclick=()=>{
+  const rs=rows(),h=["batch","name","status","days_in_status","days_estimated","strategist","editor",
+    "brief_type","format","avatar","awareness","result","due","started","launched","asana_url"];
+  const out=[h].concat(rs.map(r=>[r.n,r.name,r.st,r.age==null?"":r.age,r.sinceEst?"yes":"no",
+    r.s||"",r.e||"",r.bt||"",r.fm||"",r.av||"",r.aw||"",r.res||"",r.due||"",r.started||"",r.launched||"",r.url||""]));
+  const q=v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([out.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}));
+  a.download=`ovia-os-${RANGE.from}_${RANGE.to}.csv`;a.click();URL.revokeObjectURL(a.href);
+};
+
+/* ---------------- boot ----------------
+   adopt() is the only place the payload is turned into view state, so a fresh
+   pull from Update now goes through exactly the same path as first load. */
+function adopt(d){
+  DATA=d; TODAY=d.today; KEYS=d.keys||{}; STATS=d.stats||{};
+  ROWS=(d.batches||[]).map(r=>({...r, age:r.since?dBetween(r.since,TODAY):null}));
+  EVENTS=d.events||[]; SPEND=d.spend||[];
+  // Landing view = last 7 days ending YESTERDAY, so it ties to Ads Manager.
+  if(!RANGE.from) RANGE={from:addD(TODAY,-7),to:addD(TODAY,-1)};
+}
+function fail(msg){
+  document.querySelector("#grid").innerHTML=
+    `<div class="card full"><h3>No data</h3><div class="body"><div class="empty">${esc(msg)}</div></div></div>`;
+}
+if(BOOT){ adopt(BOOT); draw(); }
+else {
+  fetch("./os-data.json").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+    .then(d=>{adopt(d);draw();})
+    .catch(e=>fail("Could not load os-data.json ("+e.message+"). Run masterOsPull in the "
+      +"Ovia Master OS Apps Script project, or open this page through the web app."));
+}
+</script>
