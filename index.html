@@ -1,9 +1,8 @@
 <meta charset="utf-8">
 <title>Ovia Master OS</title>
+<link rel="icon" href="data:image/svg&#43;xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Crect x='11' y='36' width='9' height='16' rx='2.5' fill='%233ddc97' opacity='.55'/%3E%3Crect x='27.5' y='27' width='9' height='25' rx='2.5' fill='%233ddc97' opacity='.78'/%3E%3Crect x='44' y='17' width='9' height='35' rx='2.5' fill='%233ddc97'/%3E%3Cpolyline points='13,30 26,22 34,26 51,10' fill='none' stroke='%23e6ebf2' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='51' cy='10' r='4.4' fill='%23e6ebf2'/%3E%3C/svg%3E">
 <style>
-  /* Deliberately NOT Ovia brand. This is an internal instrument panel, not a
-     client surface — cool slate ground, single cyan accent, colour reserved for
-     data. Leo: "it's using Ovia brand colors when it doesn't need to." */
+   
   :root{
     --bg:#0b0e13; --panel:#131820; --panel2:#1a212c; --line:#242d3a; --soft:#1d2531;
     --ink:#e6ebf2; --ink2:#95a1b4; --ink3:#5f6b7d;
@@ -27,17 +26,25 @@
   button:hover{border-color:var(--ink3)}
   button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   button.go{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:650}
+  button.sm{font-size:11.5px;padding:3px 9px;border-radius:20px}
 
-  header{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-    padding:9px 16px;background:color-mix(in srgb,var(--bg) 90%,transparent);
+  header{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:8px 16px;background:color-mix(in srgb,var(--bg) 92%,transparent);
     backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
   header h1{margin:0;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
   .grow{flex:1 1 auto}
   .sub{color:var(--ink3);font-size:11.5px}
+  .stale{color:var(--hot)}
 
-  /* filter bar — chips grouped by dimension, OR within, AND across */
-  #filterbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:9px 16px;
-    border-bottom:1px solid var(--line);background:var(--panel);min-height:42px}
+   
+  #tabs{display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:2px}
+  #tabs button{border:0;background:none;padding:4px 12px;border-radius:6px;font-size:12.5px;color:var(--ink2)}
+  #tabs button.on{background:var(--panel);color:var(--ink);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+
+   
+  #filterbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:8px 16px;
+    border-bottom:1px solid var(--line);background:var(--panel);min-height:40px}
   .fchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
     border:1px solid var(--line);border-radius:20px;padding:3px 6px 3px 11px;font-size:12.5px}
   .fchip b{font-weight:650;color:var(--ink2);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
@@ -45,7 +52,7 @@
   .fchip .x:hover{color:var(--accent)}
   .fchip .or{color:var(--ink3);font-size:11px}
 
-  main{max-width:1500px;margin:0 auto;padding:16px}
+  main{max-width:1600px;margin:0 auto;padding:16px}
   #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;align-items:start}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 14px 12px;
     position:relative;min-width:0}
@@ -64,6 +71,8 @@
   .scope{font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:20px;
     border:1px solid var(--line);color:var(--ink3);font-weight:600}
   .scope.range{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+  .ctl{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;align-items:center}
+  .ctl .lab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-right:1px}
   .recon{margin-top:8px;padding-top:7px;border-top:1px solid var(--soft);font-size:11.5px;color:var(--ink3);
     display:flex;flex-wrap:wrap;gap:4px 14px}
   .recon b{color:var(--ink2);font-family:var(--mono);font-weight:600}
@@ -86,6 +95,7 @@
   .kpi .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;
     letter-spacing:-.02em;margin-top:3px}
   .kpi .d{font-size:11px;margin-top:1px;font-family:var(--mono);color:var(--ink3)}
+  .kpi.lead .v{color:var(--accent)}
 
   table{width:100%;border-collapse:collapse}
   th,td{text-align:right;padding:6px 9px;white-space:nowrap;font-size:12.5px}
@@ -96,25 +106,56 @@
   tbody td{border-bottom:1px solid var(--soft);font-family:var(--mono)}
   tbody tr:last-child td{border-bottom:0}
   tbody tr.tot td{border-top:1px solid var(--line);border-bottom:0;font-weight:700}
+  tbody tr.grp td{background:var(--panel2);font-family:var(--sans);font-weight:650;font-size:11.5px;
+    letter-spacing:.03em;color:var(--ink2);border-bottom:1px solid var(--line)}
   td.txt{font-family:var(--sans)}
-  td.name{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+  td.name{max-width:300px;overflow:hidden;text-overflow:ellipsis}
   tr.click{cursor:pointer} tr.click:hover{background:var(--panel2)}
-  .tw{overflow-x:auto;max-height:420px;overflow-y:auto}
+  .tw{overflow-x:auto;max-height:460px;overflow-y:auto}
+  .tw.tall{max-height:700px}
+  a.q{color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink3)}
+  a.q:hover{border-bottom-color:var(--accent);color:var(--accent)}
+
+   
+  .exp{display:inline-block;width:14px;color:var(--ink3);cursor:pointer;user-select:none;
+    transition:transform .12s ease}
+  .exp:hover{color:var(--accent)}
+  .exp.open{transform:rotate(90deg);color:var(--accent)}
+  tr.det td{background:var(--panel2);padding:0 9px 9px 26px;border-bottom:1px solid var(--line)}
+  tr.det table{background:none} tr.det thead th{border-bottom-color:var(--line)}
+  tr.det tbody td{border-bottom:1px solid var(--soft)}
 
   .ring{width:21px;height:21px;border-radius:50%;display:inline-grid;place-items:center;
     font-size:9.5px;font-weight:700;font-family:var(--mono);border:2px solid var(--cold);color:var(--cold)}
   .ring.w{border-color:var(--hot);color:var(--hot)}
   .pill{display:inline-block;padding:0 7px;border-radius:20px;font-size:11px;background:var(--panel2);
     color:var(--ink2);border:1px solid var(--line);font-family:var(--sans)}
+  .who{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;font-size:9.5px;
+    font-weight:700;font-family:var(--mono);background:var(--soft);color:var(--ink2);border:1px solid var(--line)}
   .empty{color:var(--ink3);font-size:12.5px;padding:8px 2px}
 
-  .feed .dh{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding:8px 2px 3px}
-  .feed .ev{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:baseline;padding:3px 2px;font-size:12.5px}
-  .feed .ev .b{font-family:var(--mono);color:var(--ink2)}
-  .feed .ev .who{color:var(--ink3);font-size:11.5px}
-  .arrow{color:var(--ink3)}
+   
+  .kan{display:flex;gap:9px;overflow-x:auto;padding-bottom:6px;align-items:flex-start}
+  .kcol{flex:0 0 208px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    padding:8px;max-height:560px;display:flex;flex-direction:column}
+  .kcol.on{border-color:var(--accent)}
+  .kh{cursor:pointer;margin-bottom:7px}
+  .kh .t{font-size:11.5px;font-weight:650;display:flex;align-items:baseline;gap:5px}
+  .kh .t b{margin-left:auto;font-family:var(--mono);font-size:15px}
+  .kh .m{font-size:10.5px;color:var(--ink3);font-family:var(--mono);margin-top:1px}
+  .kh .vol{height:3px;border-radius:2px;background:var(--soft);margin-top:5px;overflow:hidden}
+  .kh .vol i{display:block;height:100%;background:var(--bar)}
+  .kbody{overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+  .kcard{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 8px;
+    font-size:11.5px;display:block;color:inherit;text-decoration:none}
+  .kcard:hover{border-color:var(--ink3)}
+  .kcard .n{font-family:var(--mono);color:var(--ink3);font-size:10.5px}
+  .kcard .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    line-height:1.35;margin:1px 0 4px}
+  .kcard .ft{display:flex;align-items:center;gap:5px}
+  .kcard .ft .sp{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
 
-  /* activity calendar — a month grid you can read at a glance */
+   
   .actcal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
   .actcal .dow{font-size:9.5px;color:var(--ink3);text-align:center;text-transform:uppercase;padding-bottom:2px}
   .actcal .cell{aspect-ratio:1;border-radius:6px;border:1px solid var(--line);background:var(--panel2);
@@ -127,7 +168,28 @@
   .actcal .cell.today{border-color:var(--accent)}
   .daydetail{margin-top:10px;border-top:1px solid var(--soft);padding-top:8px}
 
-  /* calendar */
+   
+  .strip{display:flex;gap:2px;overflow-x:auto;padding:2px 0 6px}
+  .strip .sd{flex:0 0 30px;text-align:center;border-radius:5px;background:var(--panel2);
+    border:1px solid var(--line);padding:3px 0 4px;cursor:pointer}
+  .strip .sd:hover{border-color:var(--ink3)}
+  .strip .sd.sel{border-color:var(--accent)}
+  .strip .sd .dw{font-size:8.5px;color:var(--ink3);text-transform:uppercase}
+  .strip .sd .dn{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+  .strip .sd .v{font-family:var(--mono);font-size:13px;font-weight:700;line-height:1.2}
+  .strip .sd .l{font-size:9px;color:var(--accent);height:11px;line-height:11px}
+
+  .pgrid{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+  .pbtn{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 7px;border-radius:20px}
+  .pbtn .who{width:22px;height:22px}
+  .pbtn small{color:var(--ink3);font-size:10.5px}
+
+  .feed .dh{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding:8px 2px 3px}
+  .feed .ev{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:baseline;padding:3px 2px;font-size:12.5px}
+  .feed .ev .b{font-family:var(--mono);color:var(--ink2)}
+  .arrow{color:var(--ink3)}
+
+   
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:grid;place-items:center}
   .scrim[hidden]{display:none}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px;
@@ -148,17 +210,23 @@
   .day.future{opacity:.22;cursor:not-allowed}
   .modal .foot{display:flex;gap:8px;align-items:center;margin-top:13px;padding-top:11px;border-top:1px solid var(--soft)}
   .pop{position:fixed;z-index:70;background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:7px;min-width:230px;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+    padding:7px;min-width:230px;max-height:70vh;overflow:auto;box-shadow:0 12px 34px rgba(0,0,0,.4)}
   .pop .row{display:flex;align-items:center;gap:9px;padding:5px 7px;border-radius:5px;font-size:12.5px;cursor:pointer}
   .pop .row:hover{background:var(--panel2)}
-  footer{max-width:1500px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);font-size:11.5px;line-height:1.65}
+  .pop .grp{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);
+    padding:8px 7px 3px;border-top:1px solid var(--soft);margin-top:4px}
+  .pop .grp:first-child{border-top:0;margin-top:0}
+  .pop .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+  footer{max-width:1600px;margin:0 auto;padding:6px 16px 40px;color:var(--ink3);font-size:11.5px;line-height:1.65}
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <header>
   <h1>Ovia OS</h1>
+  <div id="tabs"></div>
   <button id="dateBtn" class="go">Last 7 days</button>
   <span class="sub" id="rangeLab"></span>
+  <button id="filtBtn">Filter</button>
   <span class="grow"></span>
   <span class="sub" id="fresh"></span>
   <button id="cardsBtn">Cards</button>
@@ -181,34 +249,12 @@
 
 <script>
 "use strict";
-/* ============================================================================
-   OVIA MASTER OS — viewer.
 
-   THE INTERACTION MODEL, ported from raw/survey-viewer-as-example.html: every
-   dimension is a card of clickable bars. Clicking a bar adds a filter. Several
-   clicks in ONE card = OR; across cards = AND. `rowsFor(exclude)` keeps a card
-   showing all of its own options, which is what makes multi-select usable.
 
-   THE DATA. Nothing on this page is invented. The payload is built by the
-   Master OS Apps Script from Meta (ad level, time_increment=1 — one row per ad
-   per day, which is what lets any date range be answered without re-pulling),
-   Asana (roles, status, transitions) and the Growth Guide roadmap (format, ad
-   type, results). Two ways it arrives, in order:
-     1. web app — doGet() replaces the placeholder below with the real JSON, so
-        the page is a single request and needs no public hosting
-     2. static  — falls back to fetch('./os-data.json') next to this file
+const BOOT =  null;
 
-   SPEND IS NEVER PRE-ATTRIBUTED. The payload carries spend per key per day plus
-   each key's two owners; the strategist and editor tables are computed
-   separately from those same rows. They are independent partitions of one pot,
-   a person legitimately appears in both with different numbers, and summing
-   them double-counts. That bug has appeared three times — see PLAN.md §15.
-   ========================================================================== */
-const BOOT = /*__OS_DATA__*/null;
 
-/* Asana's own emoji, so a pipeline stage reads at a glance rather than as prose.
-   The archived options are here on purpose: they are disabled in Asana but they
-   still appear in old stories, so the viewer must render them. */
+
 const SE={"Writing Copy":"📝","Ready To Be Edited":"⚠️","In Progress":"🎥","Pending Review":"⏱️",
   "In Revisions":"🚨","Ready For Launch":"✅","Launched":"🚀",
   "Briefing":"✉️","Not Started":"◦","Ready To Edit":"🎬"};
@@ -217,35 +263,70 @@ const STAGE=["Writing Copy","Ready To Be Edited","In Progress","Pending Review",
 const em=st=>st?((SE[st]||"")+" "+st).trim():"—";
 const nameOf=x=>x||"—";
 
-let DATA=null,TODAY="",ROWS=[],EVENTS=[],SPEND=[],KEYS={},STATS={};
+let DATA=null,ROWS=[],EVENTS=[],SPEND=[],KEYS={},STATS={},PEOPLE=[];
+let DATA_DAY="",COMPLETE="";        
 
-/* ---------------- spend attribution ----------------
-   A spend row carries a KEY, never a person: "128" (a batch), "cb:CB37-D" (a
-   content batch, which has no owner by design), "ov:Bounty" (a config
-   override) or "other:Trials". KEYS holds each key's label and its strategist
-   and editor as resolved by the classifier in the script — the viewer never
-   re-parses an ad name, so there is exactly one place that logic lives. */
+
+
+const iso=d=>d.toISOString().slice(0,10);
+function localToday(){const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+let TODAY=localToday();
+const addD=(s,n)=>iso(new Date(new Date(s+"T12:00:00Z").getTime()+n*864e5));
+const dBetween=(a,b)=>Math.round((new Date(b+"T12:00:00Z")-new Date(a+"T12:00:00Z"))/864e5);
+const dow=s=>(new Date(s+"T12:00:00Z").getUTCDay()+6)%7;          
+const weekStart=s=>addD(s,-dow(s));
+const md=s=>new Date(s+"T12:00:00Z").toLocaleDateString("en",{month:"short",day:"numeric",timeZone:"UTC"});
+const dowName=s=>new Date(s+"T12:00:00Z").toLocaleDateString("en",{weekday:"short",timeZone:"UTC"});
+const monLab=s=>new Date(s+"-01T12:00:00Z").toLocaleDateString("en",{month:"short",year:"numeric",timeZone:"UTC"});
+function wkLab(s){const e=addD(s,6);
+  return md(s)+"–"+(s.slice(0,7)===e.slice(0,7)?e.slice(8).replace(/^0/,""):md(e));}
+const bucketOf=(d,mode)=>mode==="day"?d:mode==="week"?weekStart(d):d.slice(0,7);
+const bucketLab=(b,mode)=>mode==="day"?dowName(b)+" "+md(b):mode==="week"?wkLab(b):monLab(b);
+function buckets(mode){
+  const out=[];
+  if(mode==="day"){for(let d=RANGE.from;d<=RANGE.to;d=addD(d,1))out.push(d);}
+  else if(mode==="week"){for(let d=weekStart(RANGE.from);d<=RANGE.to;d=addD(d,7))out.push(d);}
+  else{let d=RANGE.from.slice(0,7);const end=RANGE.to.slice(0,7);
+    while(d<=end){out.push(d);const y=+d.slice(0,4),m=+d.slice(5);
+      d=m===12?(y+1)+"-01":y+"-"+String(m+1).padStart(2,"0");}}
+  return out;
+}
+
+let RANGE={from:"",to:""}, LABEL="Last 7 days";
+let FILTERS=[];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const usd=n=>"$"+Math.round(n).toLocaleString();
+const usd1=n=>n>=10000?"$"+Math.round(n/1000)+"k":"$"+Math.round(n).toLocaleString();
+const initials=n=>!n?"—":n.split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+const clip=(s,n)=>!s?"":(s.length>n?s.slice(0,n-1)+"…":s);
+
+
+
 const keyMeta=k=>KEYS[k]||{kind:"other",label:k,s:null,e:null,n:null};
-
 function inRange(d){return d>=RANGE.from&&d<=RANGE.to;}
 function spendInRange(){return SPEND.filter(r=>inRange(r.d));}
 
-/** Money grouped by the holder of ONE role. Called once per role, never merged. */
+
+
 function spendByRole(role,rowSet){
   const ok=rowSet?new Set(rowSet.map(r=>r.n)):null;
   const by={};
   spendInRange().forEach(r=>{
     const m=keyMeta(r.k),who=role==="s"?m.s:m.e;
-    if(!who)return;                       // content batches and orphans have no owner
-    if(ok&&(m.n==null||!ok.has(m.n)))return;   // respect the current filters
-    const o=by[who]=by[who]||{spend:0,purch:0,value:0,n:new Set()};
+    if(!who)return;                       
+    if(ok&&(m.n==null||!ok.has(m.n)))return;   
+    const o=by[who]=by[who]||{spend:0,purch:0,value:0,n:new Set(),keys:{}};
     o.spend+=r.s;o.purch+=r.p;o.value+=r.v;if(m.n!=null)o.n.add(m.n);
+    const kk=o.keys[r.k]=o.keys[r.k]||{spend:0,purch:0,value:0,label:m.label,n:m.n};
+    kk.spend+=r.s;kk.purch+=r.p;kk.value+=r.v;
   });
   return by;
 }
 
-/** Where the account's money sits. The gap between account and owned is not a
-    rounding error — it is content batches, which nobody is credited for. */
+
+
 function spendSplit(){
   const t={acct:0,owned:0,content:0,orphan:0,other:0,purch:0,value:0};
   spendInRange().forEach(r=>{
@@ -257,31 +338,30 @@ function spendSplit(){
   });
   return t;
 }
+ 
+let SPB={};
+function spendPerBatch(){
+  const m={};
+  spendInRange().forEach(r=>{const km=keyMeta(r.k);if(km.n==null)return;
+    const o=m[km.n]=m[km.n]||{s:0,p:0,v:0};o.s+=r.s;o.p+=r.p;o.v+=r.v;});
+  return m;
+}
 
-/* ---------------- state ---------------- */
-const iso=d=>d.toISOString().slice(0,10);
-const addD=(s,n)=>iso(new Date(new Date(s+"T12:00:00Z").getTime()+n*864e5));
-const dBetween=(a,b)=>Math.round((new Date(b+"T12:00:00Z")-new Date(a+"T12:00:00Z"))/864e5);
-let RANGE={from:"",to:""}, LABEL="Last 7 days";   // set by adopt(), once data lands
-let FILTERS=[];            // {dim,val}
-let hidden=new Set(), order=null;
-const $=s=>document.querySelector(s);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const usd=n=>"$"+Math.round(n).toLocaleString();
 
-/* ---------------- dimensions ----------------
-   Adding a view = adding one entry here. That is the whole extension story. */
+
 const DIMS=[
  {k:"s",      t:"Strategist", get:r=>nameOf(r.s)},
  {k:"e",      t:"Editor",     get:r=>r.e||null},
  {k:"st",     t:"Status",     get:r=>em(r.st), order:STAGE.map(em)},
  {k:"bt",     t:"Brief type", get:r=>r.bt||null},
  {k:"fm",     t:"Format",     get:r=>r.fm||null},
+ 
+
  {k:"av",     t:"Avatar",     get:r=>r.av||null},
  {k:"aw",     t:"Awareness",  get:r=>r.aw||null},
  {k:"res",    t:"Result",     get:r=>r.res||null},
- /* No transition date and no snapshot yet means we do not know how long it has
-    sat there. Say so — a guessed 0 reads as "moved today", which is worse. */
+ 
+
  {k:"age",    t:"Days in status", get:r=>{const d=r.age;
             if(d==null) return "unknown";
             return d<=1?"0–1 days":d<=3?"2–3 days":d<=6?"4–6 days":d<=13?"7–13 days":"14+ days";}},
@@ -289,8 +369,8 @@ const DIMS=[
 ];
 const dimOf=k=>DIMS.find(d=>d.k===k);
 
-/* rows passing all filters EXCEPT those on `exclude` — so a card keeps showing
-   all its own options while you multi-select within it. */
+
+
 function rowsFor(exclude){
   const by={};
   FILTERS.forEach(f=>{ if(f.dim===exclude)return; (by[f.dim]=by[f.dim]||[]).push(f.val); });
@@ -306,30 +386,83 @@ function toggle(dim,val){
   draw();
 }
 
-/* ---------------- cards ---------------- */
-const CARDS=[
- {id:"kpi",   t:"At a glance", cls:"full", render:kpiCard},
- {id:"spendS", t:"Spend by strategist", cls:"wide", scope:"range"},
- {id:"spendE", t:"Spend by editor", cls:"wide", scope:"range"},
- {id:"out",   t:"Launched by role", cls:"wide", scope:"range", render:outCard},
- ...DIMS.map(d=>({id:"dim:"+d.k, t:d.t, cls:"", scope:"now"})),
- {id:"board", t:"Batches", cls:"full", scope:"now", render:boardCard},
- {id:"feed",  t:"What changed", cls:"wide", scope:"range", render:feedCard},
- {id:"cycle", t:"Cycle time", cls:"wide", render:cycleCard}
+
+
+function launchesInRange(rowSet){
+  const ev={};
+  EVENTS.forEach(e=>{ if(e.to!=="Launched"||!inRange(e.d))return;
+    if(ev[e.n]==null||e.d<ev[e.n]) ev[e.n]=e.d; });
+  const out=[];
+  rowSet.forEach(r=>{
+    const d=ev[r.n]||((r.launched&&inRange(r.launched))?r.launched:null);
+    if(d) out.push({r,d});
+  });
+  return out;
+}
+const launchedInRange=rowSet=>launchesInRange(rowSet).map(x=>x.r);
+
+ 
+const CARD={
+ kpi:    {t:"At a glance",         cls:"full", render:kpiCard},
+ spendS: {t:"Spend by strategist", cls:"wide", scope:"range", render:(b,s)=>spendCard(b,"s",s)},
+ spendE: {t:"Spend by editor",     cls:"wide", scope:"range", render:(b,s)=>spendCard(b,"e",s)},
+ launch: {t:"Launched",            cls:"full", scope:"range", render:launchCard},
+ kanban: {t:"Pipeline",            cls:"full", scope:"now",   render:kanbanCard},
+ board:  {t:"Batches",             cls:"full", scope:"now",   render:boardCard},
+ feed:   {t:"What changed",        cls:"full", scope:"range", render:feedCard},
+ cycle:  {t:"Cycle time",          cls:"wide", scope:"range", render:cycleCard},
+ people: {t:"Everyone",            cls:"full", scope:"range", render:peopleCard},
+ person: {t:"Person",              cls:"full", scope:"range", render:personCard}
+};
+DIMS.forEach(d=>CARD["dim:"+d.k]={t:d.t,cls:"",scope:"now",dim:d.k});
+
+
+
+const TABS=[
+ {id:"out", t:"Outcomes",         cards:["kpi","spendS","spendE","launch","kanban","feed","board"]},
+ {id:"cs",  t:"Creative Strategy", cards:["kpi","launch","cycle","dim:bt","dim:av","dim:aw","dim:res","spendS","board"]},
+ {id:"ed",  t:"Editing",           cards:["kpi","spendE","launch","cycle","dim:fm","dim:st","dim:age","dim:due","board"]},
+ {id:"ppl", t:"People",            cards:["people","person"]}
 ];
-const cardById=id=>CARDS.find(c=>c.id===id);
-function cardOrder(){ if(!order) order=CARDS.map(c=>c.id); return order.filter(id=>cardById(id)); }
+let TAB="out";
+const tabOf=id=>TABS.find(t=>t.id===id);
+
+
+
+let LAYOUT={};
+function loadLayout(){
+  try{LAYOUT=JSON.parse(localStorage.getItem("os.layout")||"{}")||{};}catch(e){LAYOUT={};}
+  try{const t=localStorage.getItem("os.tab"); if(t&&tabOf(t))TAB=t;}catch(e){}
+}
+function saveLayout(){
+  try{localStorage.setItem("os.layout",JSON.stringify(LAYOUT));localStorage.setItem("os.tab",TAB);}catch(e){}
+}
+function lay(){return LAYOUT[TAB]=LAYOUT[TAB]||{hidden:[],order:null};}
+function cardOrder(){
+  const L=lay(), all=tabOf(TAB).cards;
+  const o=(L.order||all).filter(id=>all.indexOf(id)>=0);
+  all.forEach(id=>{if(o.indexOf(id)<0)o.push(id);});
+  return o;
+}
+const isHidden=id=>lay().hidden.indexOf(id)>=0;
+
+ 
+let V={launch:{gran:"total",split:"person"}, feed:"week", board:{scope:"live",group:"none"},
+       kan:{scope:"live"}, sort:{k:"age",dir:-1}, calSel:null, stripSel:null,
+       expand:new Set(), person:null};
 
 function draw(){
-  $("#rangeLab").textContent = RANGE.from===RANGE.to ? RANGE.from
-    : RANGE.from+" → "+RANGE.to+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d";
+  SPB=spendPerBatch();
+  $("#rangeLab").innerHTML = (RANGE.from===RANGE.to ? md(RANGE.from)
+      : md(RANGE.from)+" → "+md(RANGE.to)+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d")
+    + (RANGE.to>COMPLETE ? ` · <span class="stale">includes a partial day</span>` : "");
   $("#dateBtn").textContent = LABEL;
-  $("#fresh").textContent = DATA&&DATA.generated ? "pulled "+DATA.generated.slice(0,16).replace("T"," ")+" ET" : "";
-  drawFilters();
+  drawFresh(); drawTabs(); drawFilters();
+
   const g=$("#grid"); g.innerHTML="";
   cardOrder().forEach(id=>{
-    if(hidden.has(id))return;
-    const c=cardById(id), el=document.createElement("div");
+    if(isHidden(id))return;
+    const c=CARD[id], el=document.createElement("div");
     el.className="card "+(c.cls||""); el.dataset.card=id; el.draggable=false;
     const sc=c.scope==="now"?`<span class="scope">now</span>`
             :c.scope==="range"?`<span class="scope range">in range</span>`:"";
@@ -338,24 +471,40 @@ function draw(){
       <h3>${esc(c.t)}${sc}</h3><div class="sub"></div><div class="body"></div>`;
     g.appendChild(el);
     const b=el.querySelector(".body"), sb=el.querySelector(".sub");
-    if(c.id==="spendS") spendCard(b,"s",sb); else if(c.id==="spendE") spendCard(b,"e",sb);
-    else if(c.id.startsWith("dim:")) barCard(b,dimOf(c.id.slice(4)),sb);
-    else c.render(b,sb);
+    if(c.dim) barCard(b,dimOf(c.dim),sb); else c.render(b,sb);
   });
-  $("#cardsBtn").textContent = hidden.size?`Cards (${hidden.size} hidden)`:"Cards";
+  $("#cardsBtn").textContent = lay().hidden.length?`Cards (${lay().hidden.length} hidden)`:"Cards";
   const s=STATS||{};
-  $("#prov").innerHTML="Click any bar to filter · several in one card = OR · across cards = AND · "
-    +"drag ⠿ to reorder · ✕ to hide. Cards marked <b>in range</b> count events inside the selected dates; "
-    +"cards marked <b>now</b> are a snapshot of this moment and ignore the range.<br>"
-    +`Meta ad-level daily spend, Asana and the Growth Guide roadmap · ${ROWS.length} batches · `
+  $("#prov").innerHTML="Click any bar or row to filter · several in one card = OR · across cards = AND · "
+    +"drag ⠿ to reorder · ✕ to hide · each tab keeps its own layout. Cards marked <b>in range</b> count "
+    +"events inside the selected dates; cards marked <b>now</b> are a snapshot of this moment.<br>"
+    +`Meta ad-level daily spend, Asana and the Growth Guide roadmap · ${ROWS.length} batches tracked · `
     +`${SPEND.length} spend rows over ${DATA?DATA.days:0} days · ${EVENTS.length} transitions`
-    +(s.storiesCapped?` · <b>${s.storiesCapped} tasks' history not fetched this run</b> (time budget)`:"")
+    +(s.storiesTotal?` · history complete for ${s.storiesFresh}/${s.storiesTotal} batches`
+        +(s.storiesMissing?` (${s.storiesMissing} never fetched — the hourly story job is still filling in)`:""):"")
     +(s.unmatchedSpend?` · ${usd(s.unmatchedSpend)} of spend matched no batch or content batch`:"");
+  saveLayout();
+}
+
+function drawFresh(){
+  if(!DATA){$("#fresh").textContent="";return;}
+  const pulled=DATA.generated?DATA.generated.slice(0,16).replace("T"," "):"?";
+  const behind=dBetween(COMPLETE,TODAY);            
+  const late=behind>1;
+  $("#fresh").innerHTML=`<span class="${late?"stale":""}">Data through ${md(COMPLETE)}</span>`
+    +` · pulled ${pulled} ET${DATA.mode==="fast"?" (fast)":""}`
+    +(late?` · <b class="stale">${behind-1}d behind</b>`:"");
+  $("#fresh").title=`Today is ${TODAY} on this machine. The pull last ran ${DATA.today}, so the last `
+    +`fully closed day of Meta data is ${COMPLETE}. "Last N days" ends yesterday, matching Meta's own preset.`;
+}
+
+function drawTabs(){
+  $("#tabs").innerHTML=TABS.map(t=>`<button data-tab="${t.id}"${TAB===t.id?' class="on"':""}>${esc(t.t)}</button>`).join("");
 }
 
 function drawFilters(){
   const el=$("#filterbar");
-  if(!FILTERS.length){ el.innerHTML=`<span class="sub">No filters — click any bar to start. Several in one card combine as OR; across cards as AND.</span>`; return; }
+  if(!FILTERS.length){ el.innerHTML=`<span class="sub">No filters — click any bar or row to start, or use Filter. Several in one dimension combine as OR; across dimensions as AND.</span>`; return; }
   const by={}; FILTERS.forEach(f=>(by[f.dim]=by[f.dim]||[]).push(f.val));
   el.innerHTML=Object.entries(by).map(([dim,vals])=>
     `<span class="fchip"><b>${esc(dimOf(dim).t)}</b>`+
@@ -378,36 +527,41 @@ function barCard(body,d,sub){
      <span class="count">${c} · ${Math.round(100*c/tot)}%</span></div>`).join("");
 }
 
-/** Batches that went live inside the range. A launch is an EVENT, so it is
-    range-scoped; Day Launched is rule-set by Asana the moment Status flips, and
-    a real transition story is used when one was fetched. */
-function launchedInRange(rowSet){
-  const byEvent=new Set(EVENTS.filter(e=>inRange(e.d)&&e.to==="Launched").map(e=>e.n));
-  return rowSet.filter(r=>byEvent.has(r.n)||(r.launched&&inRange(r.launched)));
-}
-
+/* ---------------- at a glance ----------------
+   Rewritten to lead with the PERIOD. Leo: "I don't like how it's aggregating all
+   177 batches, that's pretty useless — it should only name the number of batches
+   we have launched in this period." The lifetime batch count is gone from the
+   tiles; it survives only in the footer, where it belongs. */
 function kpiCard(body,sub){
-  const t=spendSplit(), rs=rows(), live=rs.filter(r=>r.st!=="Launched");
+  const t=spendSplit(), rs=rows();
+  const launched=launchedInRange(rs);
+  const live=rs.filter(r=>r.st!=="Launched");
+  const overdue=live.filter(r=>r.due&&r.due<TODAY).length;
   const mine=spendByRole("s",rs), team=Object.values(mine).reduce((a,o)=>a+o.spend,0);
-  const winners=rs.filter(r=>r.res&&r.res!=="Losing Ad").length;
-  const scored=rs.filter(r=>r.res).length;
-  const filtered=FILTERS.length>0;
+  const scored=launched.filter(r=>r.res), winners=scored.filter(r=>r.res!=="Losing Ad").length;
+  const days=dBetween(RANGE.from,RANGE.to)+1;
   body.className="body kpis";
   body.innerHTML=[
-   ["Account spend",usd(t.acct),(dBetween(RANGE.from,RANGE.to)+1)+" days, all ads"],
-   [filtered?"Spend, filtered":"Batch spend",usd(team),filtered?"matching batches":"attributable to a strategist"],
+   ["Launched",launched.length,"in this period",1],
+   ["Account spend",usd(t.acct),days+" days, all ads"],
+   ["Batch spend",usd(team),FILTERS.length?"matching batches":"attributable to a strategist"],
    ["Purchases",t.purch.toLocaleString(),"account"],
    ["CPA",t.purch?"$"+(t.acct/t.purch).toFixed(2):"—","account"],
    ["ROAS",t.acct?(t.value/t.acct).toFixed(2):"—","account"],
+   ["Hit rate",scored.length?(winners/scored.length*100).toFixed(1)+"%":"—",
+      scored.length?winners+"/"+scored.length+" scored":"none scored yet"],
    ["Content",t.acct?(t.content/t.acct*100).toFixed(1)+"%":"—","unowned"],
-   ["Launched",launchedInRange(rs).length,"in range"],
    ["In flight",live.length,"right now"],
-   ["Hit rate",scored?(winners/scored*100).toFixed(1)+"%":"—",winners+"/"+scored+" scored"],
-   ["Matching",rs.length,"of "+ROWS.length+" batches"]
-  ].map(([k,v,d])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
-  sub.textContent="";
+   ["Overdue",overdue,overdue?"past due, not launched":"nothing past due"]
+  ].map(([k,v,d,lead])=>`<div class="kpi${lead?" lead":""}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${launched.length}</b>`
+    +` launched ${md(RANGE.from)} → ${md(RANGE.to)} · ${live.length} in flight now`
+    +(FILTERS.length?` · filtered to ${rs.length} batches`:"");
 }
 
+/* ---------------- spend, expandable ----------------
+   The chevron opens the batches behind a person's number; the NAME still
+   filters. Two targets in one cell, so both gestures stay available. */
 function spendCard(body,role,sub){
   /* One role per call. The strategist table and the editor table are built from
      the same spend rows by two different joins and must never be added
@@ -416,13 +570,35 @@ function spendCard(body,role,sub){
   const by=spendByRole(role,rows());
   const list=Object.entries(by).sort((a,b)=>b[1].spend-a[1].spend);
   const tot=list.reduce((a,[,o])=>a+o.spend,0);
+  const det=(who,o)=>{
+    const ks=Object.entries(o.keys).sort((a,b)=>b[1].spend-a[1].spend);
+    const top=ks.slice(0,12), rest=ks.slice(12);
+    const restSpend=rest.reduce((a,[,k])=>a+k.spend,0);
+    return `<tr class="det"><td colspan="7"><table><thead><tr>
+        <th>Batch</th><th>Spend</th><th>Share</th><th>Purch</th><th>CPA</th><th>ROAS</th></tr></thead><tbody>`
+      +top.map(([kk,k])=>{const b=k.n!=null?ROWS.find(x=>x.n===k.n):null;
+        return `<tr><td class="txt name">${b&&b.url
+            ?`<a class="q" href="${esc(b.url)}" target="_blank" rel="noopener">${esc(k.label)}</a>`
+            :esc(k.label)}</td>
+          <td>${usd(k.spend)}</td><td>${o.spend?(k.spend/o.spend*100).toFixed(1):"0.0"}%</td>
+          <td>${k.purch}</td><td>${k.purch?"$"+(k.spend/k.purch).toFixed(2):"—"}</td>
+          <td>${k.spend?(k.value/k.spend).toFixed(2):"—"}</td></tr>`;}).join("")
+      +(rest.length?`<tr><td class="txt" style="color:var(--ink3)">and ${rest.length} more batches</td>
+          <td>${usd(restSpend)}</td><td>${o.spend?(restSpend/o.spend*100).toFixed(1):"0.0"}%</td>
+          <td colspan="3"></td></tr>`:"")
+      +`</tbody></table></td></tr>`;
+  };
   body.innerHTML=`<div class="tw"><table><thead><tr><th>Person</th><th>Spend</th><th>Share</th>
       <th>Batches</th><th>Purch</th><th>CPA</th><th>ROAS</th></tr></thead><tbody>`
-   +(list.length?list.map(([w,o])=>`<tr class="click" data-dim="${role}" data-val="${esc(w)}">
-      <td class="txt">${esc(w)}</td><td>${usd(o.spend)}</td>
+   +(list.length?list.map(([w,o])=>{const open=V.expand.has(role+"|"+w);
+      return `<tr>
+      <td class="txt"><span class="exp${open?" open":""}" data-exp="${esc(role+"|"+w)}" title="Show this person's batches">▸</span>
+        <span class="q" style="cursor:pointer" data-dim="${role}" data-val="${esc(w)}">${esc(w)}</span></td>
+      <td>${usd(o.spend)}</td>
       <td>${tot?(o.spend/tot*100).toFixed(1):"0.0"}%</td><td>${o.n.size}</td><td>${o.purch}</td>
       <td>${o.purch?"$"+(o.spend/o.purch).toFixed(2):"—"}</td>
-      <td>${o.spend?(o.value/o.spend).toFixed(2):"—"}</td></tr>`).join("")
+      <td>${o.spend?(o.value/o.spend).toFixed(2):"—"}</td></tr>`
+      +(open?det(w,o):"");}).join("")
      :`<tr><td colspan="7" class="empty">No spend for these filters in this range.</td></tr>`)
    +`<tr class="tot"><td class="txt">All ${role==="s"?"strategists":"editors"}</td><td>${usd(tot)}</td><td>100%</td>
       <td></td><td>${list.reduce((a,[,o])=>a+o.purch,0)}</td><td></td><td></td></tr></tbody></table></div>`;
@@ -436,106 +612,323 @@ function spendCard(body,role,sub){
   if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${usd(tot)}</b>`
     +` on batches owned by ${role==="s"?"a strategist":"an editor"}`
     +(FILTERS.length?" · filtered":"")
+    +` · <b style="color:var(--accent)">▸</b> opens their top batches · click a name to filter`
     +` · content batches have no owner, so this never equals account spend`;
 }
 
-function outCard(body,sub){
-  /* Was counting EVERY batch regardless of date — the number Leo caught. Output is
-     an EVENT (a batch went live), so it must be scoped to the range. For Launched
-     rows `since` is the launch date. */
-  const rs=launchedInRange(rows());
-  const mk=(roleKey,label)=>{
+/* ---------------- launched, with a granularity switch ----------------
+   Leo: "should have different views automatically like weekly view so I can see
+   when certain things were launched/ideated. It should just be a button click."
+   Two switches: what the rows are, and how wide a column is. */
+function launchCard(body,sub){
+  const L=launchesInRange(rows());
+  const gran=V.launch.gran, split=V.launch.split;
+  const ctl=`<div class="ctl"><span class="lab">View</span>`
+   +[["total","Totals"],["week","By week"],["month","By month"],["day","By day"]]
+     .map(([k,l])=>`<button class="sm${gran===k?" go":""}" data-lg="${k}">${l}</button>`).join("")
+   +`<span style="width:10px"></span><span class="lab">Rows</span>`
+   +[["person","Person"],["bt","Brief type"],["fm","Format"],["st","Status"]]
+     .map(([k,l])=>`<button class="sm${split===k?" go":""}" data-ls="${k}">${l}</button>`).join("")
+   +`</div>`;
+
+  if(!L.length){body.innerHTML=ctl+`<div class="empty">Nothing launched in this range with the current filters.</div>`;
+    sub.textContent="0 launches in range";return;}
+
+  /* Totals keeps the shape Leo signed off on: per person, split by the brief
+     type they came in as, with the role roll-up on the bottom line. */
+  if(gran==="total"&&split==="person"){
+    const mk=(roleKey,label)=>{
+      /* BRIEF TYPE ARRIVES LOWERCASE — 'ideation', not 'Ideation'. Keying this
+         table on the capitalised words silently renders three columns of zeros,
+         which is exactly what it did until it was caught in test. */
+      /* A launched batch with nobody in this role is shown as (unassigned)
+         rather than dropped, so the bottom line equals the number of launches
+         on the At a glance tile. A silent drop is how a table ends up
+         disagreeing with the headline it sits under. */
+      const by={};
+      L.forEach(({r})=>{const w=r[roleKey]||"(unassigned)";
+        const o=by[w]=by[w]||{ideation:0,iteration:0,imitation:0,n:0};
+        const bt=(r.bt||"").toLowerCase();
+        if(o[bt]!==undefined)o[bt]++; o.n++;});
+      const list=Object.entries(by).sort((a,b)=>b[1].n-a[1].n);
+      const t={ideation:0,iteration:0,imitation:0,n:0};
+      list.forEach(([,o])=>["ideation","iteration","imitation","n"].forEach(k=>t[k]+=o[k]));
+      return `<table><thead><tr><th>${label}</th><th>💡 Ideation</th><th>🔄 Iteration</th><th>🎭 Imitation</th><th>Total</th></tr></thead><tbody>`
+        +list.map(([w,o])=>`<tr class="click" data-dim="${roleKey}" data-val="${esc(w)}">
+           <td class="txt">${esc(w)}</td><td>${o.ideation||"·"}</td><td>${o.iteration||"·"}</td>
+           <td>${o.imitation||"·"}</td><td><b>${o.n}</b></td></tr>`).join("")
+        +`<tr class="tot"><td class="txt">All ${label.toLowerCase()}s</td><td>${t.ideation}</td>
+           <td>${t.iteration}</td><td>${t.imitation}</td><td>${t.n}</td></tr></tbody></table>`;
+    };
+    body.innerHTML=ctl+`<div class="tw">${mk("s","Strategist")}<div style="height:12px"></div>${mk("e","Editor")}</div>`;
+    sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${L.length}</b>`
+      +` launched ${md(RANGE.from)} → ${md(RANGE.to)} · role totals on the bottom line`;
+    return;
+  }
+  if(gran==="total"){
+    const d=dimOf(split);
+    const by={}; L.forEach(({r})=>{const v=d.get(r)||"(blank)"; by[v]=(by[v]||0)+1;});
+    const list=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+    body.innerHTML=ctl+`<div class="tw"><table><thead><tr><th>${esc(d.t)}</th><th>Launched</th><th>Share</th></tr></thead><tbody>`
+      +list.map(([v,n])=>`<tr class="click" data-dim="${esc(split)}" data-val="${esc(v)}">
+          <td class="txt">${esc(v)}</td><td>${n}</td><td>${(n/L.length*100).toFixed(1)}%</td></tr>`).join("")
+      +`<tr class="tot"><td class="txt">All</td><td>${L.length}</td><td>100%</td></tr></tbody></table></div>`;
+    sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${L.length}</b> launched, by ${d.t.toLowerCase()}`;
+    return;
+  }
+
+  /* Matrix: rows are the split, columns are time. Column header click sets the
+     date range to that bucket; row name click filters on it. */
+  const cols=buckets(gran);
+  const matrix=(pick,label,dimKey)=>{
     const by={};
-    rs.forEach(r=>{const w=r[roleKey]; if(!w)return;
-      const o=by[w]=by[w]||{ideation:0,iteration:0,imitation:0,n:0};
-      if(o[r.bt]!==undefined)o[r.bt]++; o.n++;});
+    L.forEach(({r,d})=>{
+      const w=pick(r); if(w==null)return;
+      const o=by[w]=by[w]||{n:0,c:{}}; const b=bucketOf(d,gran);
+      o.c[b]=(o.c[b]||0)+1; o.n++;
+    });
     const list=Object.entries(by).sort((a,b)=>b[1].n-a[1].n);
-    const t={ideation:0,iteration:0,imitation:0,n:0};
-    list.forEach(([,o])=>["ideation","iteration","imitation","n"].forEach(k=>t[k]+=o[k]));
-    return `<table><thead><tr><th>${label}</th><th>💡</th><th>🔄</th><th>🎭</th><th>Total</th></tr></thead><tbody>`
-      +list.map(([w,o])=>`<tr class="click" data-dim="${roleKey}" data-val="${esc(w)}">
-         <td class="txt">${esc(w)}</td><td>${o.ideation||"·"}</td><td>${o.iteration||"·"}</td>
-         <td>${o.imitation||"·"}</td><td><b>${o.n}</b></td></tr>`).join("")
-      +`<tr class="tot"><td class="txt">All ${label.toLowerCase()}s</td><td>${t.ideation}</td>
-         <td>${t.iteration}</td><td>${t.imitation}</td><td>${t.n}</td></tr></tbody></table>`;
+    if(!list.length)return "";
+    const colTot={}; cols.forEach(c=>colTot[c]=0);
+    list.forEach(([,o])=>cols.forEach(c=>colTot[c]+=(o.c[c]||0)));
+    const grand=cols.reduce((a,c)=>a+colTot[c],0);
+    const peak=Math.max(1,...list.flatMap(([,o])=>cols.map(c=>o.c[c]||0)));
+    return `<table><thead><tr><th>${esc(label)}</th>`
+      +cols.map(c=>`<th data-bk="${esc(c)}|${gran}" title="Set the range to ${esc(bucketLab(c,gran))}">${esc(bucketLab(c,gran))}</th>`).join("")
+      +`<th>Total</th></tr></thead><tbody>`
+      +list.map(([w,o])=>`<tr>
+          <td class="txt${dimKey?" q":""}"${dimKey?` style="cursor:pointer" data-dim="${esc(dimKey)}" data-val="${esc(w)}"`:""}>${esc(w)}</td>`
+        +cols.map(c=>{const n=o.c[c]||0;
+          return `<td style="${n?`background:color-mix(in srgb,var(--accent) ${Math.round(8+42*n/peak)}%,transparent)`:""}">${n||"·"}</td>`;}).join("")
+        +`<td><b>${o.n}</b></td></tr>`).join("")
+      +`<tr class="tot"><td class="txt">All</td>`
+      +cols.map(c=>`<td>${colTot[c]||"·"}</td>`).join("")+`<td>${grand}</td></tr></tbody></table>`;
   };
-  body.innerHTML=rs.length
-    ? `<div class="tw">${mk("s","Strategist")}<div style="height:10px"></div>${mk("e","Editor")}</div>`
-    : `<div class="empty">Nothing launched in this range with the current filters.</div>`;
-  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b>`
-    +` batches launched ${RANGE.from} → ${RANGE.to} · role totals on the bottom line`;
+  let html;
+  if(split==="person"){
+    html=`<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:2px 0 4px">Strategist</div>`
+      +matrix(r=>r.s||"(unassigned)","Strategist","s")
+      +`<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:12px 0 4px">Editor</div>`
+      +matrix(r=>r.e||"(unassigned)","Editor","e");
+  }else{
+    const d=dimOf(split);
+    html=matrix(r=>d.get(r)||"(blank)",d.t,split);
+  }
+  body.innerHTML=ctl+`<div class="tw tall">${html}</div>`;
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${L.length}</b>`
+    +` launched across ${cols.length} ${gran==="day"?"days":gran+"s"} · click a column header to zoom the range to it`;
 }
 
-let SORT={k:"age",dir:-1}, BOARD="live";
+/* ---------------- kanban ----------------
+   The pipeline drawn the way the team already reads it in Asana: one column per
+   status, volume on the header, the batches themselves underneath. Everything
+   the global filters do applies here, so picking a person leaves only their
+   board. Column header toggles that status as a filter. */
+function kanbanCard(body,sub){
+  const all=rows();
+  const scope=V.kan.scope;
+  const rs=scope==="live"?all.filter(r=>r.st!=="Launched"):all;
+  const by={}; STAGE.forEach(s=>by[s]=[]);
+  const extra=[];
+  rs.forEach(r=>{ if(by[r.st])by[r.st].push(r); else extra.push(r); });
+  const shown=scope==="live"?STAGE.filter(s=>s!=="Launched"):STAGE;
+  const peak=Math.max(1,...shown.map(s=>by[s].length));
+  const ctl=`<div class="ctl"><span class="lab">Show</span>`
+   +[["live","In flight"],["all","Everything"]].map(([k,l])=>
+      `<button class="sm${scope===k?" go":""}" data-kan="${k}">${l}</button>`).join("")
+   +`<span class="sub" style="margin-left:8px">click a column to filter by that status · click a card to open it in Asana</span></div>`;
+
+  const col=st=>{
+    const list=by[st].slice().sort((a,b)=>(b.age==null?-1:b.age)-(a.age==null?-1:a.age));
+    const spend=list.reduce((a,r)=>a+((SPB[r.n]&&SPB[r.n].s)||0),0);
+    const cap=list.slice(0,40);
+    return `<div class="kcol${has("st",em(st))?" on":""}">
+      <div class="kh" data-dim="st" data-val="${esc(em(st))}">
+        <div class="t"><span>${SE[st]||""}</span><span>${esc(st)}</span><b>${list.length}</b></div>
+        <div class="m">${usd1(spend)} in range</div>
+        <div class="vol"><i style="width:${100*list.length/peak}%"></i></div>
+      </div>
+      <div class="kbody">`
+      +(list.length?cap.map(r=>{const sp=(SPB[r.n]&&SPB[r.n].s)||0;
+        return `<a class="kcard" href="${esc(r.url||"#")}" target="_blank" rel="noopener">
+          <div class="n">#${r.n}${(r.hist===0||r.hist===-1)?`<span title="story history not fully fetched yet — the hourly job is still filling in">&nbsp;·</span>`:""}</div>
+          <div class="nm">${esc(clip(r.name,64)||"—")}</div>
+          <div class="ft">
+            ${r.age==null?`<span class="ring" title="no transition or snapshot yet">—</span>`
+              :`<span class="ring${r.age>=4?" w":""}" title="${r.age} days in ${esc(st)}${r.sinceEst?" (inferred from snapshots)":""}">${r.age}${r.sinceEst?"*":""}</span>`}
+            <span class="who" title="${esc(nameOf(r.e))}">${esc(initials(r.e))}</span>
+            ${sp?`<span class="sp">${usd1(sp)}</span>`:""}
+          </div></a>`;}).join("")
+       :`<div class="empty" style="font-size:11.5px">—</div>`)
+      +(list.length>cap.length?`<div class="sub" style="padding:4px 2px">+${list.length-cap.length} more</div>`:"")
+      +`</div></div>`;
+  };
+  body.innerHTML=ctl+`<div class="kan">${shown.map(col).join("")}</div>`
+   +(extra.length?`<div class="sub" style="margin-top:6px">${extra.length} batch(es) sit in a status outside the standard pipeline: `
+      +[...new Set(extra.map(r=>r.st||"(none)"))].map(esc).join(", ")+`</div>`:"");
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b>`
+   +` batches on the board${FILTERS.length?" with the current filters":""}`
+   +` · the ring is days in that status · the columns are a <b>now</b> snapshot,`
+   +` the money on them is spend inside the selected range`;
+}
+
+/* ---------------- batches table ---------------- */
 function boardCard(body,sub){
-  /* Default is what is IN FLIGHT, because that is the question the board
-     answers on a Tuesday morning. The other two scopes are one click away
-     rather than a setting, since the right default was never settled. */
   const all=rows();
   const changed=new Set(EVENTS.filter(e=>inRange(e.d)).map(e=>e.n));
-  const rs=(BOARD==="live"?all.filter(r=>r.st!=="Launched")
-           :BOARD==="changed"?all.filter(r=>changed.has(r.n))
+  const launched=new Set(launchedInRange(all).map(r=>r.n));
+  const B=V.board;
+  const rs=(B.scope==="live"?all.filter(r=>r.st!=="Launched")
+           :B.scope==="changed"?all.filter(r=>changed.has(r.n))
+           :B.scope==="launched"?all.filter(r=>launched.has(r.n))
            :all).slice();
+  const SORT=V.sort;
   rs.sort((a,b)=>{let x=a[SORT.k],y=b[SORT.k];
+    if(SORT.k==="spend"){x=(SPB[a.n]&&SPB[a.n].s)||0;y=(SPB[b.n]&&SPB[b.n].s)||0;}
     if(x==null)x=SORT.dir<0?-Infinity:Infinity; if(y==null)y=SORT.dir<0?-Infinity:Infinity;
     return (x>y?1:x<y?-1:0)*SORT.dir;});
+
   const cols=[["n","Batch"],["st","Status"],["age","Days"],["e","Editor"],["s","Strategist"],
-    ["bt","Type"],["fm","Format"],["res","Result"],["due","Due"]];
-  const tabs=[["live","In flight"],["changed","Changed in range"],["all","All"]]
-    .map(([k,l])=>`<button data-board="${k}"${BOARD===k?' class="go"':""}>${l}</button>`).join(" ");
-  body.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:8px">${tabs}</div>`
-   +`<div class="tw"><table><thead><tr>${cols.map(([k,l])=>`<th data-sort="${k}">${l}</th>`).join("")}</tr></thead><tbody>`
-   +(rs.length?rs.map(r=>`<tr>
-      <td class="txt name"><a href="${esc(r.url||"#")}" target="_blank" rel="noopener"
-        style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink3)">#${r.n} ${esc(r.name)}</a></td>
+    ["bt","Type"],["fm","Format"],["res","Result"],["spend","Spend"],["due","Due"]];
+  const groupers={none:null,
+    st:{t:"Status",of:r=>em(r.st),order:STAGE.map(em)},
+    e:{t:"Editor",of:r=>nameOf(r.e)},
+    s:{t:"Strategist",of:r=>nameOf(r.s)},
+    wk:{t:"Week launched",of:r=>r.launched?weekStart(r.launched):"not launched"}};
+  const ctl=`<div class="ctl"><span class="lab">Show</span>`
+   +[["live","In flight"],["changed","Changed in range"],["launched","Launched in range"],["all","All"]]
+     .map(([k,l])=>`<button class="sm${B.scope===k?" go":""}" data-board="${k}">${l}</button>`).join("")
+   +`<span style="width:10px"></span><span class="lab">Group</span>`
+   +[["none","None"],["st","Status"],["e","Editor"],["s","Strategist"],["wk","Week launched"]]
+     .map(([k,l])=>`<button class="sm${B.group===k?" go":""}" data-bgrp="${k}">${l}</button>`).join("")
+   +`</div>`;
+
+  const line=r=>{const sp=(SPB[r.n]&&SPB[r.n].s)||0;
+    return `<tr>
+      <td class="txt name"><a class="q" href="${esc(r.url||"#")}" target="_blank" rel="noopener">#${r.n} ${esc(r.name)}</a></td>
       <td class="txt"><span class="pill">${esc(em(r.st))}</span></td>
       <td>${r.st==="Launched"?"—":r.age==null?`<span class="sub" title="no transition or snapshot yet">—</span>`
           :`<span class="ring${r.age>=4?" w":""}"${r.sinceEst?' title="inferred from daily snapshots, not a transition"':""}>${r.age}${r.sinceEst?"*":""}</span>`}</td>
       <td class="txt">${esc(nameOf(r.e))}</td><td class="txt" style="color:var(--ink2)">${esc(nameOf(r.s))}</td>
       <td class="txt">${esc(r.bt||"·")}</td><td class="txt">${esc(r.fm||"·")}</td>
       <td class="txt">${r.res?esc(r.res):"·"}</td>
+      <td>${sp?usd(sp):"·"}</td>
       <td class="txt" style="color:${r.due&&r.due<TODAY&&r.st!=="Launched"?"var(--hot)":"var(--ink3)"}">${r.due||"—"}</td>
-     </tr>`).join(""):`<tr><td colspan="9" class="empty">Nothing matches.</td></tr>`)
-   +`</tbody></table></div>`;
+     </tr>`;};
+
+  let bodyRows;
+  if(!rs.length) bodyRows=`<tr><td colspan="${cols.length}" class="empty">Nothing matches.</td></tr>`;
+  else if(B.group==="none") bodyRows=rs.map(line).join("");
+  else{
+    const g=groupers[B.group], by={};
+    rs.forEach(r=>{const v=g.of(r);(by[v]=by[v]||[]).push(r);});
+    let ks=Object.keys(by);
+    if(g.order) ks.sort((a,b)=>g.order.indexOf(a)-g.order.indexOf(b));
+    else if(B.group==="wk") ks.sort((a,b)=>a<b?1:-1);
+    else ks.sort((a,b)=>by[b].length-by[a].length);
+    bodyRows=ks.map(k=>{
+      const list=by[k], sp=list.reduce((a,r)=>a+((SPB[r.n]&&SPB[r.n].s)||0),0);
+      const lab=B.group==="wk"&&k!=="not launched"?"Week of "+wkLab(k):k;
+      return `<tr class="grp"><td colspan="${cols.length}">${esc(lab)} · ${list.length} batch${list.length===1?"":"es"}`
+        +(sp?` · ${usd(sp)} in range`:"")+`</td></tr>`+list.map(line).join("");
+    }).join("");
+  }
+  body.innerHTML=ctl+`<div class="tw tall"><table><thead><tr>`
+   +cols.map(([k,l])=>`<th data-sort="${k}">${l}${V.sort.k===k?(V.sort.dir<0?" ▾":" ▴"):""}</th>`).join("")
+   +`</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
   sub.innerHTML=rs.length+" of "+ROWS.length+" batches · click a batch to open it in Asana · "
-   +"click a header to sort · <b>days</b> is a NOW figure, not range-scoped"
+   +"click a header to sort · <b>days</b> and <b>status</b> are NOW figures; <b>spend</b> is range-scoped"
    +(rs.some(r=>r.sinceEst&&r.st!=="Launched")?" · * inferred from snapshots":"");
 }
 
-let calSel=null;
+/* ---------------- what changed ----------------
+   Leo: "needs much more context by day and I should be able to put it into a
+   weekly view like Asana has. There should be clear columns for the batch
+   number, the concept, the editor, the strategist." So: three views, and the
+   two table views carry those columns explicitly. The calendar stays because it
+   is the only one that shows the SHAPE of a month at a glance. */
 function feedCard(body,sub){
-  /* Leo: "why is it not a calendar? It's really difficult to view this as just text."
-     A month grid of transition counts — the shape of the month is visible before
-     any reading happens. Click a day for its events. */
   const ok=new Set(rows().map(r=>r.n));
   const evs=EVENTS.filter(e=>ok.has(e.n));
+  const inR=evs.filter(e=>inRange(e.d));
+  const ctl=`<div class="ctl"><span class="lab">View</span>`
+   +[["week","By week"],["day","By day"],["cal","Calendar"]].map(([k,l])=>
+      `<button class="sm${V.feed===k?" go":""}" data-feed="${k}">${l}</button>`).join("")
+   +`</div>`;
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${inR.length}</b>`
+    +` changes ${md(RANGE.from)} → ${md(RANGE.to)}`
+    +(FILTERS.length?` on the ${ok.size} batches matching the filters`:"");
+
+  if(V.feed==="cal"){ body.innerHTML=ctl; calFeed(body,evs,inR.length); return; }
+
+  const rowFor=(e,withDay)=>{
+    const b=ROWS.find(x=>x.n===e.n);
+    const t=e.at?new Date(e.at).toLocaleTimeString("en",{hour:"numeric",minute:"2-digit"}):"";
+    return `<tr>`
+      +(withDay?`<td class="txt" style="color:var(--ink3)">${dowName(e.d)} ${md(e.d)}</td>`:"")
+      +`<td>${b&&b.url?`<a class="q" href="${esc(b.url)}" target="_blank" rel="noopener">#${e.n}</a>`:"#"+e.n}</td>
+      <td class="txt name">${esc(clip(b?b.name:"",56)||"—")}</td>
+      <td class="txt">${e.from?`<span style="color:var(--ink3)">${esc(em(e.from))}</span> <span class="arrow">→</span> `:""}<b>${esc(em(e.to))}</b></td>
+      <td class="txt">${esc(nameOf(b&&b.e))}</td>
+      <td class="txt" style="color:var(--ink2)">${esc(nameOf(b&&b.s))}</td>
+      <td class="txt" style="color:var(--ink3)">${e.by?esc(e.by):"Asana rule"}</td>
+      <td style="color:var(--ink3)">${t}</td></tr>`;
+  };
+  const head=withDay=>`<tr>${withDay?"<th>Day</th>":""}<th>Batch</th><th>Concept</th>
+    <th>Change</th><th>Editor</th><th>Strategist</th><th>By</th><th>Time</th></tr>`;
+
+  if(!inR.length){ body.innerHTML=ctl+`<div class="empty">No changes in this range with the current filters.</div>`; return; }
+
+  if(V.feed==="day"){
+    const by={}; inR.forEach(e=>(by[e.d]=by[e.d]||[]).push(e));
+    const days=Object.keys(by).sort().reverse();
+    body.innerHTML=ctl+`<div class="tw tall"><table><thead>${head(false)}</thead><tbody>`
+      +days.map(d=>`<tr class="grp"><td colspan="7">${dowName(d)} ${md(d)} · ${by[d].length} change${by[d].length===1?"":"s"}
+          · ${new Set(by[d].map(e=>e.n)).size} batch${new Set(by[d].map(e=>e.n)).size===1?"":"es"}</td></tr>`
+        +by[d].slice().sort((a,b)=>a.at<b.at?-1:1).map(e=>rowFor(e,false)).join("")).join("")
+      +`</tbody></table></div>`;
+    return;
+  }
+  /* weekly, the Asana-style grouping he asked for */
+  const by={}; inR.forEach(e=>{const w=weekStart(e.d);(by[w]=by[w]||[]).push(e);});
+  const wks=Object.keys(by).sort().reverse();
+  body.innerHTML=ctl+`<div class="tw tall"><table><thead>${head(true)}</thead><tbody>`
+    +wks.map(w=>{const list=by[w].slice().sort((a,b)=>a.at<b.at?-1:1);
+      const launches=list.filter(e=>e.to==="Launched").length;
+      return `<tr class="grp"><td colspan="8">Week of ${wkLab(w)} · ${list.length} change${list.length===1?"":"s"}
+        · ${new Set(list.map(e=>e.n)).size} batches${launches?` · <span style="color:var(--accent)">${launches} launched 🚀</span>`:""}</td></tr>`
+      +list.map(e=>rowFor(e,true)).join("");}).join("")
+    +`</tbody></table></div>`;
+}
+
+function calFeed(body,evs,inR){
+  /* Leo: "why is it not a calendar? It's really difficult to view this as just
+     text." A month grid of transition counts — the shape of the month is
+     visible before any reading happens. Click a day for its events. */
   const byDay={}; evs.forEach(e=>(byDay[e.d]=byDay[e.d]||[]).push(e));
   const m=new Date(RANGE.to+"T12:00:00Z"), y=m.getUTCFullYear(), mo=m.getUTCMonth();
   const start=(new Date(Date.UTC(y,mo,1)).getUTCDay()+6)%7, dim=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
-  const inR=evs.filter(e=>inRange(e.d)).length;
-
   let cells="";
   for(let i=0;i<start;i++) cells+=`<div class="cell blank"></div>`;
   for(let d=1;d<=dim;d++){
     const ds=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const list=byDay[ds]||[], n=list.length;
-    const lit=inRange(ds);
+    const list=byDay[ds]||[], n=list.length, lit=inRange(ds);
     const bg=n?`background:color-mix(in srgb,var(--accent) ${Math.min(10+n*11,58)}%,var(--panel2))`:"";
     const emo=[...new Set(list.map(e=>SE[e.to]||""))].join("");
-    cells+=`<div class="cell${calSel===ds?" sel":""}${ds===TODAY?" today":""}" data-cal="${ds}"
+    cells+=`<div class="cell${V.calSel===ds?" sel":""}${ds===TODAY?" today":""}" data-cal="${ds}"
       style="${bg};${lit?"":"opacity:.35"}" title="${ds}: ${n} change${n===1?"":"s"}">
       <div class="dn">${d}</div>${n?`<div class="big">${n}</div><div class="em">${emo}</div>`:""}</div>`;
   }
-  const sel=calSel&&byDay[calSel]?byDay[calSel]:null;
-  body.innerHTML=`<div class="actcal">${["m","t","w","t","f","s","s"].map(x=>`<div class="dow">${x}</div>`).join("")}${cells}</div>`
-   +(sel?`<div class="daydetail feed"><div class="dh">${new Date(calSel+"T12:00:00Z").toLocaleDateString("en",{weekday:"long",month:"short",day:"numeric",timeZone:"UTC"})} · ${sel.length} change${sel.length===1?"":"s"}</div>`
+  const sel=V.calSel&&byDay[V.calSel]?byDay[V.calSel]:null;
+  body.insertAdjacentHTML("beforeend",
+    `<div class="actcal">${["m","t","w","t","f","s","s"].map(x=>`<div class="dow">${x}</div>`).join("")}${cells}</div>`
+   +(sel?`<div class="daydetail feed"><div class="dh">${new Date(V.calSel+"T12:00:00Z").toLocaleDateString("en",{weekday:"long",month:"short",day:"numeric",timeZone:"UTC"})} · ${sel.length} change${sel.length===1?"":"s"}</div>`
       +sel.map(e=>{const bb=ROWS.find(x=>x.n===e.n);
         return `<div class="ev"><span class="b">#${e.n}</span>
           <span>${e.from?esc(em(e.from))+' <span class="arrow">→</span> ':""}<b>${esc(em(e.to))}</b>
-          ${bb?`<span class="who"> ${esc(bb.name).slice(0,32)}</span>`:""}</span>
-          <span class="who">${e.by?esc(e.by):"Asana rule"}</span></div>`;}).join("")+`</div>`
-     :`<div class="daydetail sub">Click a day for its changes. Dimmed days are outside the selected range.</div>`);
-  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${inR}</b> changes in range · ${evs.length} shown on the month`;
+          ${bb?`<span class="sub"> ${esc(clip(bb.name,32))}</span>`:""}</span>
+          <span class="sub">${e.by?esc(e.by):"Asana rule"}</span></div>`;}).join("")+`</div>`
+     :`<div class="daydetail sub">Click a day for its changes. Dimmed days are outside the selected range.</div>`));
 }
 
 function cycleCard(body,sub){
@@ -565,13 +958,134 @@ function cycleCard(body,sub){
    +` launched in range with both dates · edit days = Day Started → Day Launched · vs due is + late, − early`;
 }
 
+/* ---------------- people ----------------
+   Leo: "I should be able to hit Utkarsh and then see his total spend, his total
+   output, everything like that." Everyone side by side, then one person in full,
+   including the per-day action log that was on the gap list (E6/H6). */
+function personStats(name,rs){
+  const s=spendByRole("s",rs)[name]||{spend:0,purch:0,value:0,n:new Set()};
+  const e=spendByRole("e",rs)[name]||{spend:0,purch:0,value:0,n:new Set()};
+  const L=launchesInRange(rs);
+  const asS=L.filter(x=>x.r.s===name), asE=L.filter(x=>x.r.e===name);
+  const liveS=rs.filter(r=>r.s===name&&r.st!=="Launched").length;
+  const liveE=rs.filter(r=>r.e===name&&r.st!=="Launched").length;
+  const edits=asE.map(x=>x.r).filter(r=>r.started&&r.launched).map(r=>dBetween(r.started,r.launched));
+  const acts=EVENTS.filter(ev=>inRange(ev.d)&&ev.by===name).length;
+  return {s,e,asS,asE,liveS,liveE,acts,
+    avgEdit:edits.length?edits.reduce((a,b)=>a+b,0)/edits.length:null};
+}
+
+function peopleCard(body,sub){
+  const rs=rows();
+  const list=PEOPLE.map(p=>({p,st:personStats(p.name,rs)}))
+    .sort((a,b)=>(b.st.asS.length+b.st.asE.length)-(a.st.asS.length+a.st.asE.length));
+  body.innerHTML=`<div class="tw"><table><thead><tr>
+      <th>Person</th><th>Roles</th><th>Spend as strat</th><th>Spend as editor</th>
+      <th>Launched as strat</th><th>Launched as editor</th><th>In flight</th>
+      <th>Avg edit days</th><th>Moves logged</th></tr></thead><tbody>`
+   +list.map(({p,st})=>`<tr class="click" data-person="${esc(p.name)}">
+      <td class="txt"><span class="who">${esc(initials(p.name))}</span> ${esc(p.name)}</td>
+      <td class="txt">${p.roles.map(r=>`<span class="pill">${esc(r)}</span>`).join(" ")}</td>
+      <td>${st.s.spend?usd(st.s.spend):"·"}</td><td>${st.e.spend?usd(st.e.spend):"·"}</td>
+      <td>${st.asS.length||"·"}</td><td>${st.asE.length||"·"}</td>
+      <td>${(st.liveS+st.liveE)||"·"}</td>
+      <td>${st.avgEdit==null?"·":st.avgEdit.toFixed(1)}</td>
+      <td>${st.acts||"·"}</td></tr>`).join("")
+   +`</tbody></table></div>`;
+  sub.innerHTML=`${PEOPLE.length} people · click a row to open them below`
+    +` · <b>spend as strategist</b> and <b>spend as editor</b> are independent partitions of the same money — never add them`;
+}
+
+function personCard(body,sub){
+  const rs=rows();
+  const sel=V.person;
+  const chips=`<div class="pgrid">`+PEOPLE.map(p=>
+    `<button class="pbtn${sel===p.name?" go":""}" data-person="${esc(p.name)}">
+       <span class="who">${esc(initials(p.name))}</span>${esc(p.name)}
+       <small>${p.roles.join(" · ")}</small></button>`).join("")+`</div>`;
+  if(!sel){
+    body.innerHTML=chips+`<div class="empty">Pick a person to see their spend, output and daily actions for ${md(RANGE.from)} → ${md(RANGE.to)}.</div>`;
+    sub.textContent="";return;
+  }
+  const st=personStats(sel,rs);
+  const roles=(PEOPLE.find(p=>p.name===sel)||{roles:[]}).roles;
+
+  const tiles=[
+    ["Launched as strategist",st.asS.length,"in range"],
+    ["Launched as editor",st.asE.length,"in range"],
+    ["Spend as strategist",st.s.spend?usd(st.s.spend):"—",st.s.n.size+" batches"],
+    ["Spend as editor",st.e.spend?usd(st.e.spend):"—",st.e.n.size+" batches"],
+    ["CPA as editor",st.e.purch?"$"+(st.e.spend/st.e.purch).toFixed(2):"—",st.e.purch+" purchases"],
+    ["ROAS as editor",st.e.spend?(st.e.value/st.e.spend).toFixed(2):"—","on their batches"],
+    ["In flight",st.liveS+st.liveE,"right now"],
+    ["Avg edit days",st.avgEdit==null?"—":st.avgEdit.toFixed(1),"start → launch"],
+    ["Moves logged",st.acts,"status changes by them"]
+  ].map(([k,v,d])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
+
+  /* the per-day action log — E6/H6, the one requirement that was still open */
+  const days=[];for(let d=RANGE.from;d<=RANGE.to;d=addD(d,1))days.push(d);
+  const mine=EVENTS.filter(e=>inRange(e.d)&&e.by===sel);
+  const launchDay={};[...st.asS,...st.asE].forEach(x=>launchDay[x.d]=(launchDay[x.d]||0)+1);
+  const byDay={};mine.forEach(e=>(byDay[e.d]=byDay[e.d]||[]).push(e));
+  const strip=days.map(d=>{const n=(byDay[d]||[]).length,l=launchDay[d]||0;
+    return `<div class="sd${V.stripSel===d?" sel":""}" data-strip="${d}" title="${d}: ${n} status change${n===1?"":"s"}${l?", "+l+" launched":""}">
+      <div class="dw">${dowName(d).slice(0,2)}</div><div class="dn">${+d.slice(8)}</div>
+      <div class="v" style="color:${n?"var(--ink)":"var(--ink3)"}">${n||"·"}</div>
+      <div class="l">${l?"🚀"+(l>1?l:""):""}</div></div>`;}).join("");
+  const selDay=V.stripSel&&byDay[V.stripSel]?byDay[V.stripSel]:null;
+  const dayDetail=selDay?`<div class="daydetail feed"><div class="dh">${dowName(V.stripSel)} ${md(V.stripSel)} · ${selDay.length} move${selDay.length===1?"":"s"}</div>`
+    +selDay.map(e=>{const b=ROWS.find(x=>x.n===e.n);
+      return `<div class="ev"><span class="b">#${e.n}</span>
+        <span>${esc(clip(b?b.name:"",40))} ${e.from?`<span class="arrow">·</span> ${esc(em(e.from))} <span class="arrow">→</span> `:""}<b>${esc(em(e.to))}</b></span>
+        <span class="sub">${new Date(e.at).toLocaleTimeString("en",{hour:"numeric",minute:"2-digit"})}</span></div>`;}).join("")
+    +`</div>`
+    :`<div class="sub" style="padding:2px">Click a day for what they moved. Only status changes Asana attributes to them appear here — rule-driven flips have no actor.</div>`;
+
+  /* their output, cut the two ways that matter for each role */
+  const outTable=(items,key,label)=>{
+    const by={};items.forEach(({r})=>{const v=r[key]||"(blank)";by[v]=(by[v]||0)+1;});
+    const list=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+    if(!list.length)return `<div class="empty">None in range</div>`;
+    return `<table><thead><tr><th>${label}</th><th>n</th></tr></thead><tbody>`
+      +list.map(([v,n])=>`<tr><td class="txt">${esc(v)}</td><td>${n}</td></tr>`).join("")+`</tbody></table>`;
+  };
+  const theirs=rs.filter(r=>r.s===sel||r.e===sel);
+  const live=theirs.filter(r=>r.st!=="Launched")
+    .sort((a,b)=>(b.age==null?-1:b.age)-(a.age==null?-1:a.age));
+
+  body.innerHTML=chips
+   +`<div class="kpis">${tiles}</div>`
+   +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px">
+       <div><div class="sub" style="margin-bottom:4px">Output as strategist, by brief type</div>${outTable(st.asS,"bt","Brief type")}</div>
+       <div><div class="sub" style="margin-bottom:4px">Output as editor, by format</div>${outTable(st.asE,"fm","Format")}</div>
+     </div>`
+   +`<div class="sub" style="margin:14px 0 4px">Daily actions · ${md(RANGE.from)} → ${md(RANGE.to)}</div>`
+   +`<div class="strip">${strip}</div>${dayDetail}`
+   +`<div class="sub" style="margin:14px 0 4px">In flight now · ${live.length} batch${live.length===1?"":"es"}</div>`
+   +(live.length?`<div class="tw"><table><thead><tr><th>Batch</th><th>Status</th><th>Days</th>
+        <th>Their role</th><th>Spend in range</th><th>Due</th></tr></thead><tbody>`
+      +live.map(r=>{const sp=(SPB[r.n]&&SPB[r.n].s)||0;
+        return `<tr><td class="txt name"><a class="q" href="${esc(r.url||"#")}" target="_blank" rel="noopener">#${r.n} ${esc(r.name)}</a></td>
+        <td class="txt"><span class="pill">${esc(em(r.st))}</span></td>
+        <td>${r.age==null?"—":`<span class="ring${r.age>=4?" w":""}">${r.age}${r.sinceEst?"*":""}</span>`}</td>
+        <td class="txt">${[r.s===sel?"strategist":"",r.e===sel?"editor":""].filter(Boolean).join(" + ")}</td>
+        <td>${sp?usd(sp):"·"}</td>
+        <td class="txt" style="color:${r.due&&r.due<TODAY?"var(--hot)":"var(--ink3)"}">${r.due||"—"}</td></tr>`;}).join("")
+      +`</tbody></table></div>`
+     :`<div class="empty">Nothing in flight.</div>`);
+  sub.innerHTML=`<b style="color:var(--ink)">${esc(sel)}</b> · ${roles.join(" · ")} · `
+    +`${md(RANGE.from)} → ${md(RANGE.to)}`
+    +(FILTERS.length?" · the filters above still apply":"")
+    +` · spend as strategist and spend as editor are separate partitions, never a sum`;
+}
+
 /* ---------------- calendar ----------------
    "Last N days" ENDS YESTERDAY, exactly like Meta's own preset. Today is a
    partial day and including it made last-7 read $42,217 against Ads Manager's
    $38,637 — the same money, a different window. Matching Meta's convention is
    what lets a number here be checked against Ads Manager without arithmetic.
    Today is its own preset when you do want the partial day. */
-let pick={from:null,to:null}, calM=new Date(TODAY+"T12:00:00Z");
+let pick={from:null,to:null}, calM=new Date();
 const PRESETS=[["Today",0],["Last 3 days",3],["Last 7 days",7],["Last 14 days",14],["Last 30 days",30],["Last 90 days",90]];
 function openCal(){
   pick={...RANGE}; calM=new Date(RANGE.to+"T12:00:00Z"); calM.setUTCDate(1);
@@ -599,20 +1113,51 @@ function calHtml(m,idx){
     ${idx===1?`<button data-nav="1">›</button>`:"<span></span>"}</div>
     <div class="grid7">${["m","t","w","t","f","s","s"].map(x=>`<span class="dow">${x}</span>`).join("")}${c}</div></div>`;
 }
+function setRange(from,to){
+  RANGE={from,to};
+  const n=dBetween(from,to)+1;
+  LABEL = from===TODAY&&to===TODAY ? "Today"
+        : to===addD(TODAY,-1) ? "Last "+n+" days"
+        : md(from)+" → "+md(to);
+}
 
 /* ---------------- events ---------------- */
 document.addEventListener("click",e=>{
+  const tb=e.target.closest("[data-tab]");
+  if(tb){TAB=tb.dataset.tab;draw();window.scrollTo({top:0});return;}
+  const exp=e.target.closest("[data-exp]");
+  if(exp){const k=exp.dataset.exp; V.expand.has(k)?V.expand.delete(k):V.expand.add(k); draw(); return;}
+  const pr=e.target.closest("[data-person]");
+  if(pr){V.person=V.person===pr.dataset.person?null:pr.dataset.person;V.stripSel=null;
+    if(TAB!=="ppl"){TAB="ppl";}
+    draw();return;}
+  const stp=e.target.closest("[data-strip]");
+  if(stp){V.stripSel=V.stripSel===stp.dataset.strip?null:stp.dataset.strip;draw();return;}
+  const bk=e.target.closest("[data-bk]");
+  if(bk){const [b,mode]=bk.dataset.bk.split("|");
+    const from=b.length===7?b+"-01":b;
+    const to=mode==="day"?from:mode==="week"?addD(from,6)
+       :addD(from.slice(0,8)+"01",-1+new Date(Date.UTC(+b.slice(0,4),+b.slice(5),0)).getUTCDate());
+    setRange(from,to>TODAY?TODAY:to);draw();return;}
+  const lg=e.target.closest("[data-lg]"); if(lg){V.launch.gran=lg.dataset.lg;draw();return;}
+  const ls=e.target.closest("[data-ls]"); if(ls){V.launch.split=ls.dataset.ls;draw();return;}
+  const fv=e.target.closest("[data-feed]"); if(fv){V.feed=fv.dataset.feed;draw();return;}
+  const kn=e.target.closest("[data-kan]"); if(kn){V.kan.scope=kn.dataset.kan;draw();return;}
+  const bg=e.target.closest("[data-bgrp]"); if(bg){V.board.group=bg.dataset.bgrp;draw();return;}
+  const bd=e.target.closest("[data-board]"); if(bd){V.board.scope=bd.dataset.board;draw();return;}
   const cal=e.target.closest("[data-cal]");
-  if(cal){calSel=calSel===cal.dataset.cal?null:cal.dataset.cal;draw();return;}
-  const bd=e.target.closest("[data-board]"); if(bd){BOARD=bd.dataset.board;draw();return;}
+  if(cal){V.calSel=V.calSel===cal.dataset.cal?null:cal.dataset.cal;draw();return;}
   const bar=e.target.closest(".bar-row"); if(bar){toggle(bar.dataset.dim,bar.dataset.val);return;}
-  const row=e.target.closest("tr.click"); if(row){toggle(row.dataset.dim,row.dataset.val);return;}
+  const cell=e.target.closest("[data-dim][data-val]");
+  if(cell){toggle(cell.dataset.dim,cell.dataset.val);return;}
+  const row=e.target.closest("tr.click"); if(row&&row.dataset.dim){toggle(row.dataset.dim,row.dataset.val);return;}
   const rm=e.target.closest("[data-rm]");
   if(rm){const [d,v]=rm.dataset.rm.split("|");toggle(d,v);return;}
   if(e.target.id==="clearAll"){FILTERS=[];draw();return;}
-  const h=e.target.closest("[data-hide]"); if(h){hidden.add(h.dataset.hide);draw();return;}
+  const h=e.target.closest("[data-hide]");
+  if(h){lay().hidden.push(h.dataset.hide);draw();return;}
   const th=e.target.closest("[data-sort]");
-  if(th){const k=th.dataset.sort;SORT={k,dir:SORT.k===k?-SORT.dir:-1};draw();return;}
+  if(th){const k=th.dataset.sort;V.sort={k,dir:V.sort.k===k?-V.sort.dir:-1};draw();return;}
   const day=e.target.closest(".day[data-d]");
   if(day){const d=day.dataset.d;
     if(!pick.from||(pick.from&&pick.to))pick={from:d,to:null};
@@ -623,16 +1168,16 @@ document.addEventListener("click",e=>{
   const p=e.target.closest("[data-p]");
   if(p){const n=+p.dataset.p;
     pick = n===0 ? {from:TODAY,to:TODAY}                        // Today, partial
-                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     // N days ending yesterday
+                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     
     drawCal();return;}
   const w=e.target.closest("[data-w]");
-  if(w){const dow=(new Date(TODAY+"T12:00:00Z").getUTCDay()+6)%7,mon=addD(TODAY,-dow);
+  if(w){const mon=weekStart(TODAY);
     if(w.dataset.w==="this")pick={from:mon,to:TODAY};
     if(w.dataset.w==="last")pick={from:addD(mon,-7),to:addD(mon,-1)};
     if(w.dataset.w==="month")pick={from:TODAY.slice(0,8)+"01",to:TODAY};
     drawCal();return;}
 });
-/* drag to reorder — only from the ⠿ handle, so text stays selectable */
+ 
 let dragId=null;
 document.addEventListener("mousedown",e=>{
   const c=e.target.closest(".card"); if(c) c.draggable=!!e.target.closest("[data-grab]");
@@ -645,84 +1190,123 @@ document.addEventListener("dragover",e=>{const c=e.target.closest(".card");
 document.addEventListener("drop",e=>{const c=e.target.closest(".card");
   document.querySelectorAll(".card.over").forEach(x=>x.classList.remove("over"));
   if(!c||!dragId||c.dataset.card===dragId)return;e.preventDefault();
-  const o=cardOrder().filter(x=>x!==dragId);o.splice(o.indexOf(c.dataset.card),0,dragId);order=o;draw();});
+  const o=cardOrder().filter(x=>x!==dragId);o.splice(o.indexOf(c.dataset.card),0,dragId);
+  lay().order=o;draw();});
 document.addEventListener("dragend",()=>{dragId=null;
   document.querySelectorAll(".card").forEach(x=>{x.draggable=false;x.classList.remove("dragging","over");});});
 
 $("#dateBtn").onclick=openCal;
 $("#cancel").onclick=()=>$("#scrim").hidden=true;
-$("#apply").onclick=()=>{if(pick.from){RANGE={from:pick.from,to:pick.to||pick.from};
-  const n=dBetween(RANGE.from,RANGE.to)+1;
-  LABEL = RANGE.from===TODAY&&RANGE.to===TODAY ? "Today"
-        : RANGE.to===addD(TODAY,-1) ? "Last "+n+" days"          // Meta convention
-        : RANGE.from+" → "+RANGE.to;
-  draw();}
+$("#apply").onclick=()=>{if(pick.from){setRange(pick.from,pick.to||pick.from);draw();}
   $("#scrim").hidden=true;};
 $("#scrim").onclick=e=>{if(e.target.id==="scrim")$("#scrim").hidden=true;};
-$("#cardsBtn").onclick=e=>{
-  const old=document.querySelector(".pop"); if(old){old.remove();return;}
+
+function popup(anchor,html,wire){
+  const old=document.querySelector(".pop"); if(old){old.remove();return null;}
   const pop=document.createElement("div");pop.className="pop";
-  const r=e.target.getBoundingClientRect();pop.style.top=(r.bottom+7)+"px";pop.style.left=Math.max(8,r.right-250)+"px";
-  pop.innerHTML=CARDS.map(c=>`<label class="row"><input type="checkbox" data-c="${c.id}" ${hidden.has(c.id)?"":"checked"}> ${esc(c.t)}</label>`).join("")
-   +`<div class="row" style="border-top:1px solid var(--soft);margin-top:5px;padding-top:8px">
-      <button id="showAll" style="flex:1">Show all</button><button id="resetOrder" style="flex:1">Reset order</button></div>`;
-  document.body.appendChild(pop);
-  pop.querySelectorAll("input[data-c]").forEach(cb=>cb.onchange=()=>{
-    cb.checked?hidden.delete(cb.dataset.c):hidden.add(cb.dataset.c);draw();});
-  pop.querySelector("#showAll").onclick=()=>{hidden.clear();pop.remove();draw();};
-  pop.querySelector("#resetOrder").onclick=()=>{order=null;pop.remove();draw();};
+  const r=anchor.getBoundingClientRect();
+  pop.style.top=(r.bottom+7)+"px";pop.style.left=Math.max(8,Math.min(r.left,innerWidth-290))+"px";
+  pop.innerHTML=html;document.body.appendChild(pop);wire&&wire(pop);
   setTimeout(()=>{const cl=ev=>{if(!pop.contains(ev.target)){pop.remove();document.removeEventListener("click",cl);}};
     document.addEventListener("click",cl);},0);
-};
-/* Update now. Served by the web app, the page can call the script directly and
-   redraw in place; opened as a static file it can only re-read the JSON beside
-   it. The pull takes a minute or two — Meta throttles, so it is one pull, not
-   one per filter. */
+  return pop;
+}
+
+
+$("#filtBtn").onclick=e=>popup(e.target,
+  DIMS.map(d=>{
+    const rs=rowsFor(d.k), c={};
+    rs.forEach(r=>{const v=d.get(r); if(v!=null)c[v]=(c[v]||0)+1;});
+    let ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);
+    if(d.order) ent.sort((a,b)=>d.order.indexOf(a[0])-d.order.indexOf(b[0]));
+    if(!ent.length)return "";
+    return `<div class="grp">${esc(d.t)}</div>`+ent.map(([v,n])=>
+      `<label class="row"><input type="checkbox" data-f="${esc(d.k)}|${esc(v)}" ${has(d.k,v)?"checked":""}>
+        ${esc(v)}<span class="cnt">${n}</span></label>`).join("");
+  }).join("")
+  +`<div class="row" style="border-top:1px solid var(--soft);margin-top:5px;padding-top:8px">
+      <button id="clr" style="flex:1">Clear all filters</button></div>`,
+  pop=>{
+    pop.querySelectorAll("input[data-f]").forEach(cb=>cb.onchange=()=>{
+      const [d,v]=cb.dataset.f.split("|");
+      const i=FILTERS.findIndex(f=>f.dim===d&&f.val===v);
+      if(i>=0)FILTERS.splice(i,1);else FILTERS.push({dim:d,val:v});
+      draw();});
+    pop.querySelector("#clr").onclick=()=>{FILTERS=[];pop.remove();draw();};
+  });
+
+$("#cardsBtn").onclick=e=>popup(e.target,
+  tabOf(TAB).cards.map(id=>`<label class="row"><input type="checkbox" data-c="${id}" ${isHidden(id)?"":"checked"}> ${esc(CARD[id].t)}</label>`).join("")
+   +`<div class="row" style="border-top:1px solid var(--soft);margin-top:5px;padding-top:8px">
+      <button id="showAll" style="flex:1">Show all</button><button id="resetOrder" style="flex:1">Reset order</button></div>`,
+  pop=>{
+    pop.querySelectorAll("input[data-c]").forEach(cb=>cb.onchange=()=>{
+      const L=lay(), id=cb.dataset.c, i=L.hidden.indexOf(id);
+      cb.checked?(i>=0&&L.hidden.splice(i,1)):(i<0&&L.hidden.push(id));draw();});
+    pop.querySelector("#showAll").onclick=()=>{lay().hidden=[];pop.remove();draw();};
+    pop.querySelector("#resetOrder").onclick=()=>{lay().order=null;pop.remove();draw();};
+  });
+
+/* Update now. Served by the web app the page can call the script directly and
+   redraw in place — that pull is the FAST one, a short Meta window spliced onto
+   what is already stored, because google.script.run has to answer inside the
+   execution limit. Opened as a static file it can only re-read the JSON beside
+   it, and it says so rather than pretending. */
 const HOSTED = typeof google!=="undefined" && google.script && google.script.run;
 $("#update").onclick=()=>{
   const b=$("#update"), was=b.textContent;
   if(HOSTED){
-    b.disabled=true; b.textContent="Pulling… ~2 min";
+    b.disabled=true; b.textContent="Pulling…";
     google.script.run
       .withSuccessHandler(j=>{b.disabled=false;b.textContent=was;adopt(JSON.parse(j));draw();})
       .withFailureHandler(err=>{b.disabled=false;b.textContent=was;
         alert("Pull failed:\n"+(err&&err.message||err)+"\n\nThe page is still showing the last good data.");})
       .osUpdateNow();
   } else {
-    b.disabled=true; b.textContent="Reloading…";
-    fetch("./os-data.json?v="+Date.now()).then(r=>r.json())
-      .then(d=>{b.disabled=false;b.textContent=was;adopt(d);draw();})
+    b.disabled=true; b.textContent="Re-reading…";
+    fetch("./os-data.json?v="+Date.now(),{cache:"no-store"}).then(r=>r.json())
+      .then(d=>{const before=DATA&&DATA.generated;adopt(d);draw();
+        b.disabled=false;b.textContent=was;
+        if(before===d.generated) alert("This is the GitHub Pages copy, which can only re-read what the "
+          +"nightly job last wrote — it cannot start a pull.\n\nNothing has changed since "
+          +d.generated.slice(0,16).replace("T"," ")+" ET.\n\nOpen the Apps Script web-app URL to force a live pull.");})
       .catch(e=>{b.disabled=false;b.textContent=was;alert("Could not reload os-data.json: "+e.message);});
   }
 };
 $("#export").onclick=()=>{
   const rs=rows(),h=["batch","name","status","days_in_status","days_estimated","strategist","editor",
-    "brief_type","format","avatar","awareness","result","due","started","launched","asana_url"];
-  const out=[h].concat(rs.map(r=>[r.n,r.name,r.st,r.age==null?"":r.age,r.sinceEst?"yes":"no",
-    r.s||"",r.e||"",r.bt||"",r.fm||"",r.av||"",r.aw||"",r.res||"",r.due||"",r.started||"",r.launched||"",r.url||""]));
+    "brief_type","format","ad_type","avatar","awareness","result","spend_in_range","purchases_in_range",
+    "due","started","launched","asana_url"];
+  const out=[h].concat(rs.map(r=>{const sp=SPB[r.n]||{s:"",p:""};
+    return [r.n,r.name,r.st,r.age==null?"":r.age,r.sinceEst?"yes":"no",
+      r.s||"",r.e||"",r.bt||"",r.fm||"",r.at||"",r.av||"",r.aw||"",r.res||"",sp.s||0,sp.p||0,
+      r.due||"",r.started||"",r.launched||"",r.url||""];}));
   const q=v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v);
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([out.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}));
   a.download=`ovia-os-${RANGE.from}_${RANGE.to}.csv`;a.click();URL.revokeObjectURL(a.href);
 };
 
-/* ---------------- boot ----------------
-   adopt() is the only place the payload is turned into view state, so a fresh
-   pull from Update now goes through exactly the same path as first load. */
+
+
 function adopt(d){
-  DATA=d; TODAY=d.today; KEYS=d.keys||{}; STATS=d.stats||{};
+  DATA=d; KEYS=d.keys||{}; STATS=d.stats||{}; PEOPLE=d.people||[];
+  TODAY=localToday();                       
+  DATA_DAY=d.today||TODAY;
+  COMPLETE=d.complete||addD(DATA_DAY,-1);   
   ROWS=(d.batches||[]).map(r=>({...r, age:r.since?dBetween(r.since,TODAY):null}));
   EVENTS=d.events||[]; SPEND=d.spend||[];
-  // Landing view = last 7 days ending YESTERDAY, so it ties to Ads Manager.
-  if(!RANGE.from) RANGE={from:addD(TODAY,-7),to:addD(TODAY,-1)};
+  
+  if(!RANGE.from) setRange(addD(TODAY,-7),addD(TODAY,-1));
 }
 function fail(msg){
   document.querySelector("#grid").innerHTML=
     `<div class="card full"><h3>No data</h3><div class="body"><div class="empty">${esc(msg)}</div></div></div>`;
 }
+loadLayout();
 if(BOOT){ adopt(BOOT); draw(); }
 else {
-  fetch("./os-data.json").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+  fetch("./os-data.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
     .then(d=>{adopt(d);draw();})
     .catch(e=>fail("Could not load os-data.json ("+e.message+"). Run masterOsPull in the "
       +"Ovia Master OS Apps Script project, or open this page through the web app."));
