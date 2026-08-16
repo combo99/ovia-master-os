@@ -1,6 +1,7 @@
 <meta charset="utf-8">
 <title>Ovia Master OS</title>
-<link rel="icon" href="data:image/svg&#43;xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Crect x='11' y='36' width='9' height='16' rx='2.5' fill='%233ddc97' opacity='.55'/%3E%3Crect x='27.5' y='27' width='9' height='25' rx='2.5' fill='%233ddc97' opacity='.78'/%3E%3Crect x='44' y='17' width='9' height='35' rx='2.5' fill='%233ddc97'/%3E%3Cpolyline points='13,30 26,22 34,26 51,10' fill='none' stroke='%23e6ebf2' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='51' cy='10' r='4.4' fill='%23e6ebf2'/%3E%3C/svg%3E">
+
+<link rel="icon" id="favicon">
 <style>
    
   :root{
@@ -251,7 +252,27 @@
 "use strict";
 
 
-const BOOT =  null;
+
+
+
+const BOOT = (function(){
+  var s = "__OS_DATA__";
+  return s.charAt(0) === "{" ? JSON.parse(s) : null;   
+})();
+
+ 
+(function(){
+  var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+    + "<rect width='64' height='64' rx='14' fill='#0b0e13'/>"
+    + "<rect x='11' y='36' width='9' height='16' rx='2.5' fill='#3ddc97' opacity='.55'/>"
+    + "<rect x='27.5' y='27' width='9' height='25' rx='2.5' fill='#3ddc97' opacity='.78'/>"
+    + "<rect x='44' y='17' width='9' height='35' rx='2.5' fill='#3ddc97'/>"
+    + "<polyline points='13,30 26,22 34,26 51,10' fill='none' stroke='#e6ebf2'"
+    + " stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/>"
+    + "<circle cx='51' cy='10' r='4.4' fill='#e6ebf2'/></svg>";
+  var el = document.getElementById("favicon");
+  if (el) el.href = "data:image/svg+xml," + encodeURIComponent(svg);
+})();
 
 
 
