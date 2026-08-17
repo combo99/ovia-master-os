@@ -170,6 +170,14 @@
   .mixrow .p{font-family:var(--mono);font-size:12px;font-weight:600;min-width:42px;text-align:right}
   .mixrow.sub .nm{padding-left:15px}
   .mixrow.sub .nm em{color:var(--ink2)}
+  .chip{border-color:var(--ink3)}
+  .donutwrap{position:relative;width:140px;margin:2px auto 10px}
+  .donut{display:block;width:140px;height:140px}
+  .donut circle{transition:stroke-width .12s ease}
+  .donut circle:hover{stroke-width:23}
+  .dcen{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+  .dcen b{display:block;font:700 25px/1 var(--mono);letter-spacing:-.02em;color:var(--ink)}
+  .dcen span{display:block;font-size:10.5px;color:var(--ink3);margin-top:3px}
   .hero{display:flex;align-items:baseline;gap:9px;margin:1px 0 7px}
   .hero b{font:700 30px/1 var(--mono);letter-spacing:-.02em;color:var(--accent)}
   .hero span{font-size:11.5px;color:var(--ink3)}
@@ -276,7 +284,6 @@
   <button id="export">Export</button>
 </header>
 <div id="filterbar"></div>
-<div class="arng" id="analysisbar" hidden></div>
 <main><div id="grid"></div></main>
 <footer id="prov"></footer>
 
@@ -467,13 +474,20 @@ function toggle(dim,val){
 
 
 
-let ARANGE={key:"30",from:"",to:"",label:"Last 30 days"};
-let ASCOPE="launched";     
 
-function analysisRows(){
+
+const ALLTIME={key:"all",from:"1970-01-01",to:"",label:"All time"};
+let AWIN={};                       
+let ASCOPE="launched";             
+function winFor(id){
+  if(!AWIN[id]) AWIN[id]={...ALLTIME,to:TODAY};
+  return AWIN[id];
+}
+function analysisRows(id){
   const rs=rows();
   if(ASCOPE==="all") return rs;
-  return launchesBetween(rs,ARANGE.from,ARANGE.to).map(x=>x.r);
+  const w=winFor(id);
+  return launchesBetween(rs,w.from,w.to).map(x=>x.r);
 }
  
 function launchesBetween(rowSet,from,to){
@@ -487,9 +501,12 @@ function launchesBetween(rowSet,from,to){
   });
   return out;
 }
-const aLabel=()=>ASCOPE==="all"
-  ? "every batch, ignoring dates"
-  : "launched "+md(ARANGE.from)+" → "+md(ARANGE.to);
+const aLabel=id=>{
+  if(ASCOPE==="all") return "every batch, ignoring dates";
+  const w=winFor(id);
+  return w.key==="all" ? "every batch that has ever launched"
+                       : "launched "+md(w.from)+" → "+md(w.to);
+};
 
 
 
@@ -553,6 +570,7 @@ const isHidden=id=>lay().hidden.indexOf(id)>=0;
 
  
 let V={launch:{gran:"total",split:"person"}, feed:"week", board:{scope:"live",group:"none",view:"table"},
+       mixView:"donut",
        kan:{scope:"live"}, sort:{k:"age",dir:-1}, calSel:null, stripSel:null,
        expand:new Set(), person:null};
 
@@ -562,7 +580,7 @@ function draw(){
       : md(RANGE.from)+" → "+md(RANGE.to)+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d")
     + (RANGE.to>COMPLETE ? ` · <span class="stale">includes a partial day</span>` : "");
   $("#dateBtn").textContent = LABEL;
-  drawFresh(); drawTabs(); drawFilters(); drawAnalysisBar();
+  drawFresh(); drawTabs(); drawFilters();
 
   const g=$("#grid"); g.innerHTML="";
   cardOrder().forEach(id=>{
@@ -571,7 +589,7 @@ function draw(){
     el.className="card "+(c.cls||""); el.dataset.card=id; el.draggable=false;
     const sc=c.scope==="now"?`<span class="scope">now</span>`
             :c.scope==="range"?`<span class="scope range">in range</span>`
-            :c.scope==="mix"?`<span class="scope range">${esc(ASCOPE==="all"?"all batches":ARANGE.label)}</span>`:"";
+            :c.scope==="mix"?`<span class="scope range">mix</span>`:"";
     el.innerHTML=`<div class="tools"><button class="grab" data-grab title="Drag">⠿</button>
       <button data-hide="${id}" title="Hide">✕</button></div>
       <h3>${esc(c.t)}${sc}</h3><div class="sub"></div><div class="body"></div>`;
@@ -604,25 +622,6 @@ function drawFresh(){
     +(late?` · <b class="stale">${behind-1}d behind</b>`:"");
   $("#fresh").title=`Today is ${TODAY} on this machine. The pull last ran ${DATA.today}, so the last `
     +`fully closed day of Meta data is ${COMPLETE}. "Last N days" ends yesterday, matching Meta's own preset.`;
-}
-
-/* The analysis window lives in its own bar, not in the header, so it can never
-   be mistaken for the OS date range. It only appears on tabs that actually
-   carry composition cards. */
-function drawAnalysisBar(){
-  const el=$("#analysisbar");
-  const used=tabOf(TAB).cards.some(id=>CARD[id]&&CARD[id].mix&&!isHidden(id));
-  if(!used){ el.hidden=true; return; }
-  el.hidden=false;
-  const P=[["30","Last 30 days"],["90","Last 90 days"],["180","Last 6 months"],["all","All time"],["os","Match OS range"]];
-  const n=analysisRows().length;
-  el.innerHTML=`<span class="lab">Mix window</span>`
-   +P.map(([k,l])=>`<button class="sm${ARANGE.key===k?" go":""}" data-ar="${k}">${l}</button>`).join("")
-   +`<button class="sm" data-ar="pick">Pick dates…</button>`
-   +`<span style="width:10px"></span><span class="lab">Count</span>`
-   +[["launched","Launched in window"],["all","Every batch, no dates"]].map(([k,l])=>
-      `<button class="sm${ASCOPE===k?" go":""}" data-asc="${k}">${l}</button>`).join("")
-   +`<span class="sub" style="margin-left:auto">${n} batches · applies to the mix cards only, not to spend</span>`;
 }
 
 function drawTabs(){
@@ -1104,6 +1103,45 @@ const WINNERS=["KPI Winner","Spend Winner","Breakthrough Winner"];
    it and a const cannot be read before its declaration. */
 Object.keys(MIX).forEach(k=>CARD["mix:"+k]={t:MIX[k].t,cls:"",scope:"mix",mix:k});
 
+/* The date chip that sits ON the card. Clicking it opens the window menu. */
+function winChip(id,canChart){
+  const w=winFor(id);
+  return `<div class="ctl"><button class="sm chip" data-win="${esc(id)}">${esc(w.label)} ▾</button>`
+    +(canChart?[["donut","◕ Donut"],["bars","▤ Bars"]].map(([k,l])=>
+      `<button class="sm${V.mixView===k?" go":""}" data-mixv="${k}">${l}</button>`).join(""):"")
+    +`</div>`;
+}
+
+/* ---- donut ----
+   Part-to-whole at a glance, which is the one job a ring is actually good at,
+   and only ever with six or fewer segments. Built as inline SVG from JS so
+   HtmlService cannot escape anything on the way out (PLAN.md §19).
+
+   The ring is NOT the label surface: the list underneath carries the exact
+   percentages and doubles as the legend, so nothing here depends on telling
+   two colours apart. Each arc is trimmed by a couple of degrees so adjacent
+   fills never touch — the same 2px surface gap the stacked bar uses. */
+function donut(segs,bigLabel,smallLabel){
+  const live=segs.filter(s=>s.v>0);
+  const tot=live.reduce((a,s)=>a+s.v,0);
+  if(!tot) return "";
+  const SZ=140, R=54, SW=20, C=2*Math.PI*R, CX=SZ/2;
+  let off=0;
+  const arcs=live.map(s=>{
+    const len=C*s.v/tot;
+    const gap=live.length>1?Math.min(3,len*0.25):0;   // never swallow a thin slice
+    const dash=Math.max(len-gap,0.75);
+    const a=`<circle cx="${CX}" cy="${CX}" r="${R}" fill="none" stroke="var(${s.colour})"
+       stroke-width="${SW}" stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}"
+       stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${CX} ${CX})"
+       ><title>${esc(s.label)} — ${s.v} (${pct(s.v,tot)})</title></circle>`;
+    off+=len; return a;
+  }).join("");
+  return `<div class="donutwrap"><svg viewBox="0 0 ${SZ} ${SZ}" class="donut" role="img"
+      aria-label="${esc(live.map(s=>s.label+" "+pct(s.v,tot)).join(", "))}">${arcs}</svg>
+    <div class="dcen"><b>${esc(bigLabel)}</b><span>${esc(smallLabel)}</span></div></div>`;
+}
+
 function sbar(segs,cls){        // segs: [{v, colour, label}]
   const tot=segs.reduce((a,s)=>a+s.v,0);
   if(!tot) return "";
@@ -1113,7 +1151,9 @@ function sbar(segs,cls){        // segs: [{v, colour, label}]
 }
 
 function mixCard(body,sub,key){
-  const spec=MIX[key], d=dimOf(spec.dim), rs=analysisRows();
+  const cardId="mix:"+key;
+  const spec=MIX[key], d=dimOf(spec.dim), rs=analysisRows(cardId);
+  const donutOn=V.mixView==="donut";
 
   if(spec.kind==="result"){
     /* Leo's ask, precisely: "Losing Ad %, then Winner % (KPI/Spend Winner) and
@@ -1124,25 +1164,38 @@ function mixCard(body,sub,key){
     const wins=WINNERS.map(w=>({w,n:scored.filter(r=>r.res===w).length}));
     const winTot=wins.reduce((a,x)=>a+x.n,0);
     const unscored=rs.length-scored.length;
+    const chip=winChip(cardId,scored.length>0);
     if(!scored.length){
-      body.innerHTML=`<div class="empty">Nothing scored yet in this window. ${rs.length} batches, none with a result.</div>`;
-      sub.innerHTML=aLabel(); return;
+      body.innerHTML=chip+`<div class="empty">Nothing scored yet in this window. ${rs.length} batches, none with a result.</div>`;
+      sub.innerHTML=aLabel(cardId); return;
     }
     const rowFor=(label,n,denom,colour,isSub)=>
       `<div class="mixrow${isSub?" sub":""}${has("res",label)?" active":""}"${label!=="Winners"?` data-dim="res" data-val="${esc(label)}"`:""}>
          <span class="nm"><span class="swatch" style="background:var(${colour})"></span><em>${esc(label)}</em></span>
          <span class="n">${n}</span><span class="p">${pct(n,denom)}</span></div>`;
-    body.innerHTML=
-      `<div class="hero"><b>${pct(winTot,scored.length)}</b><span>hit rate · ${winTot} of ${scored.length} scored ads won</span></div>`
-      +`<div class="sblab"><span>Of everything scored</span><span>${scored.length} ads</span></div>`
-      +sbar([{v:lose,colour:"--mute",label:"Losing Ad"},{v:winTot,colour:"--win-2",label:"Winners"}])
+
+    /* One ring of FOUR segments, not a two-slice ring of losing-vs-winners: a
+       two-slice pie is a stat tile wearing a costume, and the hit rate in the
+       middle already is that tile. The winners keep their own renormalised
+       row set underneath, which is where "Breakthrough as a share of winners"
+       actually lives. */
+    const head = donutOn
+      ? donut([{v:lose,colour:"--mute",label:"Losing Ad"}]
+                .concat(wins.map((x,i)=>({v:x.n,colour:"--win-"+(i+1),label:x.w}))),
+              pct(winTot,scored.length), "hit rate")
+        +`<div class="sblab"><span>Of everything scored</span><span>${scored.length} ads</span></div>`
+      : `<div class="hero"><b>${pct(winTot,scored.length)}</b><span>hit rate · ${winTot} of ${scored.length} scored ads won</span></div>`
+        +`<div class="sblab"><span>Of everything scored</span><span>${scored.length} ads</span></div>`
+        +sbar([{v:lose,colour:"--mute",label:"Losing Ad"},{v:winTot,colour:"--win-2",label:"Winners"}]);
+
+    body.innerHTML=chip+head
       +rowFor("Losing Ad",lose,scored.length,"--mute")
       +rowFor("Winners",winTot,scored.length,"--win-2")
       +(winTot?`<div class="sblab" style="margin-top:9px"><span>Of the winners only</span><span>${winTot} ads</span></div>`
-        +sbar(wins.map((x,i)=>({v:x.n,colour:"--win-"+(i+1),label:x.w})),"sbar2")
+        +(donutOn?"":sbar(wins.map((x,i)=>({v:x.n,colour:"--win-"+(i+1),label:x.w})),"sbar2"))
         +wins.map((x,i)=>rowFor(x.w,x.n,winTot,"--win-"+(i+1),true)).join(""):"")
       +(unscored?`<div class="recon"><span>${unscored} more launched with no result recorded yet — left out of every percentage above</span></div>`:"");
-    sub.innerHTML=aLabel()+(FILTERS.length?" · filtered":"");
+    sub.innerHTML=aLabel(cardId)+(FILTERS.length?" · filtered":"");
     return;
   }
 
@@ -1150,21 +1203,25 @@ function mixCard(body,sub,key){
   let ent=Object.entries(counts);
   if(spec.order) ent.sort((a,b)=>spec.order.indexOf(a[0])-spec.order.indexOf(b[0]));
   else ent.sort((a,b)=>b[1]-a[1]);
-  if(!ent.length){ body.innerHTML=`<div class="empty">No values in this window.</div>`; sub.innerHTML=aLabel(); return; }
-  const tot=ent.reduce((a,[,n])=>a+n,0);
   const ramp=spec.ramp||spec.cat;
+  const showChart=!!ramp && ent.length>0 && ent.length<=6;
+  const chip=winChip(cardId,showChart);
+  if(!ent.length){ body.innerHTML=chip+`<div class="empty">No values in this window.</div>`; sub.innerHTML=aLabel(cardId); return; }
+  const tot=ent.reduce((a,[,n])=>a+n,0);
   const colourOf=i=>ramp?ramp[Math.min(i,ramp.length-1)]:"--bar";
-  const showBar=!!ramp && ent.length<=6;
-  body.innerHTML=
-     (showBar?`<div class="sblab"><span>${esc(spec.t)}</span><span>${tot} batches</span></div>`
-       +sbar(ent.map(([k,n],i)=>({v:n,colour:colourOf(i),label:k}))):"")
+  const segs=ent.map(([k,n],i)=>({v:n,colour:colourOf(i),label:k}));
+  body.innerHTML=chip
+    +(showChart
+       ? (donutOn ? donut(segs,String(tot),"batches")
+                  : `<div class="sblab"><span>${esc(spec.t)}</span><span>${tot} batches</span></div>`+sbar(segs))
+       : "")
     +ent.map(([k,n],i)=>
       `<div class="mixrow${has(spec.dim,k)?" active":""}" data-dim="${esc(spec.dim)}" data-val="${esc(k)}">
-         <span class="nm">${showBar?`<span class="swatch" style="background:var(${colourOf(i)})"></span>`:""}<em>${esc(k)}</em></span>
+         <span class="nm">${showChart?`<span class="swatch" style="background:var(${colourOf(i)})"></span>`:""}<em>${esc(k)}</em></span>
          <span class="n">${n}</span><span class="p">${pct(n,tot)}</span></div>`).join("")
-    +(!showBar&&ramp?`<div class="recon"><span>${ent.length} values — past six, colour stops telling classes apart, so this one is a list</span></div>`:"");
+    +(!showChart&&ramp?`<div class="recon"><span>${ent.length} values — past six, colour stops telling classes apart, so this one stays a list</span></div>`:"");
   sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${tot}</b> batches · `
-    +aLabel()+(FILTERS.length?" · filtered":"");
+    +aLabel(cardId)+(FILTERS.length?" · filtered":"");
 }
 
 function cycleCard(body,sub){
@@ -1174,7 +1231,7 @@ function cycleCard(body,sub){
      that landed against the due date, negative meaning early. */
   /* Cycle time reads the MIX window too — over 7 days it is 8 launches and the
      averages swing wildly. Same reason the composition cards use it. */
-  const done=analysisRows().filter(r=>r.launched&&r.started);
+  const done=analysisRows("cycle").filter(r=>r.launched&&r.started);
   const mk=(key,label)=>{
     const by={};
     done.forEach(r=>{const k=r[key]||"(blank)";
@@ -1191,9 +1248,9 @@ function cycleCard(body,sub){
         :`<tr><td colspan="4" class="empty">Nothing launched in this range with these filters.</td></tr>`)
       +`</tbody></table>`;
   };
-  body.innerHTML=`<div class="tw">${mk("bt","Brief type")}<div style="height:10px"></div>${mk("fm","Format")}</div>`;
+  body.innerHTML=winChip("cycle",false)+`<div class="tw">${mk("bt","Brief type")}<div style="height:10px"></div>${mk("fm","Format")}</div>`;
   sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${done.length}</b>`
-   +` with both dates · ${aLabel()} · edit days = Day Started → Day Launched · vs due is + late, − early`;
+   +` with both dates · ${aLabel("cycle")} · edit days = Day Started → Day Launched · vs due is + late, − early`;
 }
 
 /* ---------------- people ----------------
@@ -1327,10 +1384,12 @@ let pick={from:null,to:null}, calM=new Date();
 let CALFOR="os";        // which window the picker is currently editing
 const PRESETS=[["Today",0],["Last 3 days",3],["Last 7 days",7],["Last 14 days",14],["Last 30 days",30],["Last 90 days",90]];
 function openCal(){
-  const base=CALFOR==="analysis"?ARANGE:RANGE;
-  pick={from:base.from,to:base.to}; calM=new Date(base.to+"T12:00:00Z"); calM.setUTCDate(1);
-  $("#calTitle").textContent=CALFOR==="analysis"
-    ? "Mix window — composition cards only" : "Date range — the whole OS";
+  const base=CALFOR==="os"?RANGE:winFor(CALFOR);
+  const to=base.to||TODAY, from=(base.from&&base.from!=="1970-01-01")?base.from:addD(to,-29);
+  pick={from,to}; calM=new Date(to+"T12:00:00Z"); calM.setUTCDate(1);
+  $("#calTitle").textContent=CALFOR==="os"
+    ? "Date range — the whole OS"
+    : "Window for " + ((CARD[CALFOR]&&CARD[CALFOR].t)||"this card");
   $("#presets").innerHTML=PRESETS.map(([l,d])=>`<button data-p="${d}">${l}</button>`).join("")
    +`<button data-w="this">This week</button><button data-w="last">Last week</button><button data-w="month">This month</button>`;
   drawCal(); $("#scrim").hidden=false;
@@ -1386,21 +1445,8 @@ document.addEventListener("click",e=>{
   const fv=e.target.closest("[data-feed]"); if(fv){V.feed=fv.dataset.feed;draw();return;}
   const kn=e.target.closest("[data-kan]"); if(kn){V.kan.scope=kn.dataset.kan;draw();return;}
   const bv=e.target.closest("[data-bview]"); if(bv){V.board.view=bv.dataset.bview;draw();return;}
-  const asc=e.target.closest("[data-asc]"); if(asc){ASCOPE=asc.dataset.asc;draw();return;}
-  const ar=e.target.closest("[data-ar]");
-  if(ar){const k=ar.dataset.ar;
-    if(k==="pick"){ CALFOR="analysis"; openCal(); return; }
-    /* "All time" reaches back past the payload's 90-day spend window on
-       purpose. Anchoring it to DATA.since found 128 of the 150 batches that
-       have ever launched — the 22 that went live before the window silently
-       vanished from every percentage. Launch dates are carried on the batch
-       itself, so they are not limited by how far back spend goes. */
-    if(k==="all") ARANGE={key:k,from:"1970-01-01",to:TODAY,label:"All time"};
-    else if(k==="os") ARANGE={key:k,from:RANGE.from,to:RANGE.to,label:"Match OS range"};
-    else { const n=+k;
-      ARANGE={key:k,from:addD(TODAY,-n),to:addD(TODAY,-1),
-        label:n===180?"Last 6 months":"Last "+n+" days"}; }
-    draw();return;}
+  const mv=e.target.closest("[data-mixv]"); if(mv){V.mixView=mv.dataset.mixv;draw();return;}
+  const wc=e.target.closest("[data-win]"); if(wc){openWinMenu(wc,wc.dataset.win);return;}
   const bg=e.target.closest("[data-bgrp]"); if(bg){V.board.group=bg.dataset.bgrp;draw();return;}
   const bd=e.target.closest("[data-board]"); if(bd){V.board.scope=bd.dataset.board;draw();return;}
   const cal=e.target.closest("[data-cal]");
@@ -1426,7 +1472,7 @@ document.addEventListener("click",e=>{
   const p=e.target.closest("[data-p]");
   if(p){const n=+p.dataset.p;
     pick = n===0 ? {from:TODAY,to:TODAY}                        // Today, partial
-                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     // N days ending yesterday
+                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     
     drawCal();return;}
   const w=e.target.closest("[data-w]");
   if(w){const mon=weekStart(TODAY);
@@ -1435,7 +1481,7 @@ document.addEventListener("click",e=>{
     if(w.dataset.w==="month")pick={from:TODAY.slice(0,8)+"01",to:TODAY};
     drawCal();return;}
 });
-/* drag to reorder — only from the ⠿ handle, so text stays selectable */
+ 
 let dragId=null;
 document.addEventListener("mousedown",e=>{
   const c=e.target.closest(".card"); if(c) c.draggable=!!e.target.closest("[data-grab]");
@@ -1458,9 +1504,9 @@ $("#cancel").onclick=()=>$("#scrim").hidden=true;
 $("#apply").onclick=()=>{
   if(pick.from){
     const to=pick.to||pick.from;
-    if(CALFOR==="analysis"){ ASCOPE="launched";
-      ARANGE={key:"custom",from:pick.from,to:to,label:md(pick.from)+" → "+md(to)}; }
-    else setRange(pick.from,to);
+    if(CALFOR==="os") setRange(pick.from,to);
+    else { ASCOPE="launched";
+      AWIN[CALFOR]={key:"custom",from:pick.from,to:to,label:md(pick.from)+" → "+md(to)}; }
     draw();
   }
   $("#scrim").hidden=true;};
@@ -1476,8 +1522,41 @@ function popup(anchor,html,wire){
     document.addEventListener("click",cl);},0);
   return pop;
 }
-/* Every dimension, reachable from every tab. This is what lets Outcomes stay
-   sparse without giving up the crisscross. */
+
+
+const WINPRESETS=[["7","Last 7 days"],["14","Last 14 days"],["30","Last 30 days"],
+                  ["90","Last 90 days"],["180","Last 6 months"],["all","All time"],
+                  ["os","Match the OS range"]];
+function openWinMenu(anchor,id){
+  const cur=winFor(id);
+  popup(anchor,
+    `<div class="grp">Window for this card</div>`
+    +WINPRESETS.map(([k,l])=>`<div class="row" data-wp="${esc(id)}|${k}">${l}
+        ${cur.key===k?'<span class="cnt">✓</span>':""}</div>`).join("")
+    +`<div class="row" data-wp="${esc(id)}|pick">Pick dates…</div>`
+    +`<div class="grp">Count</div>`
+    +[["launched","Batches launched in the window"],["all","Every batch, ignoring dates"]]
+      .map(([k,l])=>`<div class="row" data-wsc="${k}">${l}${ASCOPE===k?'<span class="cnt">✓</span>':""}</div>`).join(""),
+    pop=>{
+      pop.querySelectorAll("[data-wp]").forEach(el=>el.onclick=()=>{
+        const [cid,k]=el.dataset.wp.split("|");
+        pop.remove();
+        if(k==="pick"){ CALFOR=cid; openCal(); return; }
+        if(k==="all") AWIN[cid]={key:k,from:"1970-01-01",to:TODAY,label:"All time"};
+        else if(k==="os") AWIN[cid]={key:k,from:RANGE.from,to:RANGE.to,label:"OS range"};
+        else { const n=+k;
+          AWIN[cid]={key:k,from:addD(TODAY,-n),to:addD(TODAY,-1),
+            label:n===180?"Last 6 months":"Last "+n+" days"}; }
+        draw();
+      });
+      pop.querySelectorAll("[data-wsc]").forEach(el=>el.onclick=()=>{
+        ASCOPE=el.dataset.wsc; pop.remove(); draw();
+      });
+    });
+}
+
+
+
 $("#filtBtn").onclick=e=>popup(e.target,
   DIMS.map(d=>{
     const c=countsFor(d,rowsFor(d.k));
@@ -1564,7 +1643,7 @@ function adopt(d){
   if(!RANGE.from) setRange(addD(TODAY,-7),addD(TODAY,-1));
   
   
-  if(!ARANGE.from) ARANGE={key:"30",from:addD(TODAY,-30),to:addD(TODAY,-1),label:"Last 30 days"};
+  AWIN={};   
 }
 function fail(msg){
   document.querySelector("#grid").innerHTML=
