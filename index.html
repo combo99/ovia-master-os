@@ -13,12 +13,23 @@
     --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
     color-scheme:dark;
+
+     
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70;
+    --win-1:#1f7a55; --win-2:#2aa877; --win-3:#4fe3a6;
+    --awr-1:#31699f; --awr-2:#3f83c6; --awr-3:#5a9ce0; --awr-4:#84b9ee; --awr-5:#b0d5f7;
+    --mute:#7c8798;
   }
   @media(prefers-color-scheme:light){:root:not([data-theme="dark"]){
     --bg:#f5f7fa; --panel:#fff; --panel2:#eef1f5; --line:#dbe1e9; --soft:#e7ecf2;
     --ink:#131820; --ink2:#5a6675; --ink3:#8b96a6;
     --accent:#128a5c; --accent-ink:#fff; --bar:#4a7fb5; --bar2:#8fb2d4;
-    --hot:#b8791f; --cold:#8b96a6; color-scheme:light}}
+    --hot:#b8791f; --cold:#8b96a6; color-scheme:light;
+     
+    --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a;
+    --win-1:#0d6b47; --win-2:#149063; --win-3:#2fb98a;
+    --awr-1:#123a69; --awr-2:#1c5596; --awr-3:#2e77bd; --awr-4:#5497d8; --awr-5:#7fb4e6;
+    --mute:#8b96a6}}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
@@ -136,6 +147,36 @@
   .empty{color:var(--ink3);font-size:12.5px;padding:8px 2px}
 
    
+   
+  .sbar{display:flex;gap:2px;height:20px;border-radius:4px;overflow:hidden;margin:2px 0 8px}
+  .sbar i{display:block;height:100%;position:relative;min-width:2px;cursor:default;
+    display:grid;place-items:center}
+  .sbar i:first-child{border-radius:4px 0 0 4px}
+  .sbar i:last-child{border-radius:0 4px 4px 0}
+  .sbar i span{font:600 10px/1 var(--mono);color:#08121a;opacity:.92;pointer-events:none}
+  .sbar.on-dark i span{color:#f2f7fb}
+  .sbar2{margin-top:-2px;margin-bottom:9px;height:12px}
+  .sblab{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink3);margin-bottom:2px}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;
+    vertical-align:baseline;flex:0 0 auto}
+  .mixrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
+    padding:3px 6px;border-radius:5px;cursor:pointer;font-size:12.5px}
+  .mixrow:hover{background:var(--panel2)}
+  .mixrow.active{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+  .mixrow .nm{display:flex;align-items:center;min-width:0}
+  .mixrow .nm em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mixrow .n{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+  .mixrow .p{font-family:var(--mono);font-size:12px;font-weight:600;min-width:42px;text-align:right}
+  .mixrow.sub .nm{padding-left:15px}
+  .mixrow.sub .nm em{color:var(--ink2)}
+  .hero{display:flex;align-items:baseline;gap:9px;margin:1px 0 7px}
+  .hero b{font:700 30px/1 var(--mono);letter-spacing:-.02em;color:var(--accent)}
+  .hero span{font-size:11.5px;color:var(--ink3)}
+  .arng{display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:7px 16px;
+    border-bottom:1px solid var(--line);background:var(--panel2)}
+  .arng .lab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+
   .kan{display:flex;gap:9px;overflow-x:auto;padding-bottom:6px;align-items:flex-start}
   .kcol{flex:0 0 208px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
     padding:8px;max-height:560px;display:flex;flex-direction:column}
@@ -235,12 +276,13 @@
   <button id="export">Export</button>
 </header>
 <div id="filterbar"></div>
+<div class="arng" id="analysisbar" hidden></div>
 <main><div id="grid"></div></main>
 <footer id="prov"></footer>
 
 <div class="scrim" id="scrim" hidden>
   <div class="modal" role="dialog" aria-label="Date range">
-    <h3>Date range</h3>
+    <h3 id="calTitle">Date range</h3>
     <div class="presets" id="presets"></div>
     <div class="cals" id="cals"></div>
     <div class="foot"><span class="sub" id="pickLab"></span><span class="grow"></span>
@@ -371,6 +413,9 @@ function spendPerBatch(){
 
 
 const DIMS=[
+ 
+
+ {k:"who",    t:"Person",     get:r=>null, multi:r=>[r.s,r.e].filter(Boolean)},
  {k:"s",      t:"Strategist", get:r=>nameOf(r.s)},
  {k:"e",      t:"Editor",     get:r=>r.e||null},
  {k:"st",     t:"Status",     get:r=>em(r.st), order:STAGE.map(em)},
@@ -397,7 +442,20 @@ function rowsFor(exclude){
   FILTERS.forEach(f=>{ if(f.dim===exclude)return; (by[f.dim]=by[f.dim]||[]).push(f.val); });
   const groups=Object.entries(by);
   if(!groups.length) return ROWS;
-  return ROWS.filter(r=>groups.every(([dim,vals])=>vals.includes(dimOf(dim).get(r))));
+  return ROWS.filter(r=>groups.every(([dim,vals])=>{
+    const d=dimOf(dim);
+    if(d.multi) return d.multi(r).some(v=>vals.includes(v));   
+    return vals.includes(d.get(r));
+  }));
+}
+ 
+function countsFor(d,rs){
+  const c={};
+  rs.forEach(r=>{
+    if(d.multi){ d.multi(r).forEach(v=>{ if(v!=null) c[v]=(c[v]||0)+1; }); return; }
+    const v=d.get(r); if(v!=null) c[v]=(c[v]||0)+1;
+  });
+  return c;
 }
 const rows=()=>rowsFor(null);
 const has=(dim,val)=>FILTERS.some(f=>f.dim===dim&&f.val===val);
@@ -406,6 +464,32 @@ function toggle(dim,val){
   if(i>=0) FILTERS.splice(i,1); else FILTERS.push({dim,val});
   draw();
 }
+
+
+
+let ARANGE={key:"30",from:"",to:"",label:"Last 30 days"};
+let ASCOPE="launched";     
+
+function analysisRows(){
+  const rs=rows();
+  if(ASCOPE==="all") return rs;
+  return launchesBetween(rs,ARANGE.from,ARANGE.to).map(x=>x.r);
+}
+ 
+function launchesBetween(rowSet,from,to){
+  const ev={};
+  EVENTS.forEach(e=>{ if(e.to!=="Launched"||e.d<from||e.d>to)return;
+    if(ev[e.n]==null||e.d<ev[e.n]) ev[e.n]=e.d; });
+  const out=[];
+  rowSet.forEach(r=>{
+    const d=ev[r.n]||((r.launched&&r.launched>=from&&r.launched<=to)?r.launched:null);
+    if(d) out.push({r,d});
+  });
+  return out;
+}
+const aLabel=()=>ASCOPE==="all"
+  ? "every batch, ignoring dates"
+  : "launched "+md(ARANGE.from)+" → "+md(ARANGE.to);
 
 
 
@@ -440,10 +524,10 @@ DIMS.forEach(d=>CARD["dim:"+d.k]={t:d.t,cls:"",scope:"now",dim:d.k});
 
 
 const TABS=[
- {id:"out", t:"Outcomes",         cards:["kpi","spendS","spendE","launch","kanban","feed","board"]},
- {id:"cs",  t:"Creative Strategy", cards:["kpi","launch","cycle","dim:bt","dim:av","dim:aw","dim:res","spendS","board"]},
- {id:"ed",  t:"Editing",           cards:["kpi","spendE","launch","cycle","dim:fm","dim:st","dim:age","dim:due","board"]},
- {id:"ppl", t:"People",            cards:["people","person"]}
+ {id:"out", t:"Outcomes",         cards:["kpi","spendS","spendE","launch","mix:res","kanban","feed","board"]},
+ {id:"cs",  t:"Creative Strategy", cards:["kpi","launch","mix:bt","mix:aw","mix:av","mix:res","cycle","board"]},
+ {id:"ed",  t:"Editing",           cards:["kpi","spendE","launch","cycle","mix:fm","dim:st","dim:age","dim:due","board"]},
+ {id:"ppl", t:"People",            cards:["people","person","mix:res","mix:aw","mix:bt"]}
 ];
 let TAB="out";
 const tabOf=id=>TABS.find(t=>t.id===id);
@@ -468,7 +552,7 @@ function cardOrder(){
 const isHidden=id=>lay().hidden.indexOf(id)>=0;
 
  
-let V={launch:{gran:"total",split:"person"}, feed:"week", board:{scope:"live",group:"none"},
+let V={launch:{gran:"total",split:"person"}, feed:"week", board:{scope:"live",group:"none",view:"table"},
        kan:{scope:"live"}, sort:{k:"age",dir:-1}, calSel:null, stripSel:null,
        expand:new Set(), person:null};
 
@@ -478,7 +562,7 @@ function draw(){
       : md(RANGE.from)+" → "+md(RANGE.to)+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d")
     + (RANGE.to>COMPLETE ? ` · <span class="stale">includes a partial day</span>` : "");
   $("#dateBtn").textContent = LABEL;
-  drawFresh(); drawTabs(); drawFilters();
+  drawFresh(); drawTabs(); drawFilters(); drawAnalysisBar();
 
   const g=$("#grid"); g.innerHTML="";
   cardOrder().forEach(id=>{
@@ -486,13 +570,16 @@ function draw(){
     const c=CARD[id], el=document.createElement("div");
     el.className="card "+(c.cls||""); el.dataset.card=id; el.draggable=false;
     const sc=c.scope==="now"?`<span class="scope">now</span>`
-            :c.scope==="range"?`<span class="scope range">in range</span>`:"";
+            :c.scope==="range"?`<span class="scope range">in range</span>`
+            :c.scope==="mix"?`<span class="scope range">${esc(ASCOPE==="all"?"all batches":ARANGE.label)}</span>`:"";
     el.innerHTML=`<div class="tools"><button class="grab" data-grab title="Drag">⠿</button>
       <button data-hide="${id}" title="Hide">✕</button></div>
       <h3>${esc(c.t)}${sc}</h3><div class="sub"></div><div class="body"></div>`;
     g.appendChild(el);
     const b=el.querySelector(".body"), sb=el.querySelector(".sub");
-    if(c.dim) barCard(b,dimOf(c.dim),sb); else c.render(b,sb);
+    if(c.dim) barCard(b,dimOf(c.dim),sb);
+    else if(c.mix) mixCard(b,sb,c.mix);
+    else c.render(b,sb);
   });
   $("#cardsBtn").textContent = lay().hidden.length?`Cards (${lay().hidden.length} hidden)`:"Cards";
   const s=STATS||{};
@@ -510,13 +597,32 @@ function draw(){
 function drawFresh(){
   if(!DATA){$("#fresh").textContent="";return;}
   const pulled=DATA.generated?DATA.generated.slice(0,16).replace("T"," "):"?";
-  const behind=dBetween(COMPLETE,TODAY);            
+  const behind=dBetween(COMPLETE,TODAY);            // 1 = normal, >1 = the pull is late
   const late=behind>1;
   $("#fresh").innerHTML=`<span class="${late?"stale":""}">Data through ${md(COMPLETE)}</span>`
     +` · pulled ${pulled} ET${DATA.mode==="fast"?" (fast)":""}`
     +(late?` · <b class="stale">${behind-1}d behind</b>`:"");
   $("#fresh").title=`Today is ${TODAY} on this machine. The pull last ran ${DATA.today}, so the last `
     +`fully closed day of Meta data is ${COMPLETE}. "Last N days" ends yesterday, matching Meta's own preset.`;
+}
+
+/* The analysis window lives in its own bar, not in the header, so it can never
+   be mistaken for the OS date range. It only appears on tabs that actually
+   carry composition cards. */
+function drawAnalysisBar(){
+  const el=$("#analysisbar");
+  const used=tabOf(TAB).cards.some(id=>CARD[id]&&CARD[id].mix&&!isHidden(id));
+  if(!used){ el.hidden=true; return; }
+  el.hidden=false;
+  const P=[["30","Last 30 days"],["90","Last 90 days"],["180","Last 6 months"],["all","All time"],["os","Match OS range"]];
+  const n=analysisRows().length;
+  el.innerHTML=`<span class="lab">Mix window</span>`
+   +P.map(([k,l])=>`<button class="sm${ARANGE.key===k?" go":""}" data-ar="${k}">${l}</button>`).join("")
+   +`<button class="sm" data-ar="pick">Pick dates…</button>`
+   +`<span style="width:10px"></span><span class="lab">Count</span>`
+   +[["launched","Launched in window"],["all","Every batch, no dates"]].map(([k,l])=>
+      `<button class="sm${ASCOPE===k?" go":""}" data-asc="${k}">${l}</button>`).join("")
+   +`<span class="sub" style="margin-left:auto">${n} batches · applies to the mix cards only, not to spend</span>`;
 }
 
 function drawTabs(){
@@ -534,8 +640,7 @@ function drawFilters(){
 }
 
 function barCard(body,d,sub){
-  const rs=rowsFor(d.k), counts={};
-  rs.forEach(r=>{const v=d.get(r); if(v==null)return; counts[v]=(counts[v]||0)+1;});
+  const rs=rowsFor(d.k), counts=countsFor(d,rs);
   let ent=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   if(d.order) ent.sort((a,b)=>d.order.indexOf(a[0])-d.order.indexOf(b[0]));
   if(!ent.length){ body.innerHTML=`<div class="empty">No values</div>`; return; }
@@ -745,19 +850,14 @@ function launchCard(body,sub){
    status, volume on the header, the batches themselves underneath. Everything
    the global filters do applies here, so picking a person leaves only their
    board. Column header toggles that status as a filter. */
-function kanbanCard(body,sub){
-  const all=rows();
-  const scope=V.kan.scope;
-  const rs=scope==="live"?all.filter(r=>r.st!=="Launched"):all;
+/** The board itself, so the Pipeline card and the Batches card can both draw
+    it from whatever row set they have already scoped. */
+function renderKanban(rs,hideLaunched){
   const by={}; STAGE.forEach(s=>by[s]=[]);
   const extra=[];
   rs.forEach(r=>{ if(by[r.st])by[r.st].push(r); else extra.push(r); });
-  const shown=scope==="live"?STAGE.filter(s=>s!=="Launched"):STAGE;
+  const shown=hideLaunched?STAGE.filter(s=>s!=="Launched"):STAGE;
   const peak=Math.max(1,...shown.map(s=>by[s].length));
-  const ctl=`<div class="ctl"><span class="lab">Show</span>`
-   +[["live","In flight"],["all","Everything"]].map(([k,l])=>
-      `<button class="sm${scope===k?" go":""}" data-kan="${k}">${l}</button>`).join("")
-   +`<span class="sub" style="margin-left:8px">click a column to filter by that status · click a card to open it in Asana</span></div>`;
 
   const col=st=>{
     const list=by[st].slice().sort((a,b)=>(b.age==null?-1:b.age)-(a.age==null?-1:a.age));
@@ -784,9 +884,20 @@ function kanbanCard(body,sub){
       +(list.length>cap.length?`<div class="sub" style="padding:4px 2px">+${list.length-cap.length} more</div>`:"")
       +`</div></div>`;
   };
-  body.innerHTML=ctl+`<div class="kan">${shown.map(col).join("")}</div>`
+  return `<div class="kan">${shown.map(col).join("")}</div>`
    +(extra.length?`<div class="sub" style="margin-top:6px">${extra.length} batch(es) sit in a status outside the standard pipeline: `
       +[...new Set(extra.map(r=>r.st||"(none)"))].map(esc).join(", ")+`</div>`:"");
+}
+
+function kanbanCard(body,sub){
+  const all=rows();
+  const scope=V.kan.scope;
+  const rs=scope==="live"?all.filter(r=>r.st!=="Launched"):all;
+  body.innerHTML=`<div class="ctl"><span class="lab">Show</span>`
+   +[["live","In flight"],["all","Everything"]].map(([k,l])=>
+      `<button class="sm${scope===k?" go":""}" data-kan="${k}">${l}</button>`).join("")
+   +`<span class="sub" style="margin-left:8px">click a column to filter by that status · click a card to open it in Asana</span></div>`
+   +renderKanban(rs,scope==="live");
   sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b>`
    +` batches on the board${FILTERS.length?" with the current filters":""}`
    +` · the ring is days in that status · the columns are a <b>now</b> snapshot,`
@@ -816,13 +927,26 @@ function boardCard(body,sub){
     e:{t:"Editor",of:r=>nameOf(r.e)},
     s:{t:"Strategist",of:r=>nameOf(r.s)},
     wk:{t:"Week launched",of:r=>r.launched?weekStart(r.launched):"not launched"}};
-  const ctl=`<div class="ctl"><span class="lab">Show</span>`
+  const ctl=`<div class="ctl"><span class="lab">View</span>`
+   +[["table","Table"],["kanban","Kanban"]].map(([k,l])=>
+      `<button class="sm${B.view===k?" go":""}" data-bview="${k}">${l}</button>`).join("")
+   +`<span style="width:10px"></span><span class="lab">Show</span>`
    +[["live","In flight"],["changed","Changed in range"],["launched","Launched in range"],["all","All"]]
      .map(([k,l])=>`<button class="sm${B.scope===k?" go":""}" data-board="${k}">${l}</button>`).join("")
-   +`<span style="width:10px"></span><span class="lab">Group</span>`
-   +[["none","None"],["st","Status"],["e","Editor"],["s","Strategist"],["wk","Week launched"]]
-     .map(([k,l])=>`<button class="sm${B.group===k?" go":""}" data-bgrp="${k}">${l}</button>`).join("")
+   +(B.view==="table"?`<span style="width:10px"></span><span class="lab">Group</span>`
+     +[["none","None"],["st","Status"],["e","Editor"],["s","Strategist"],["wk","Week launched"]]
+       .map(([k,l])=>`<button class="sm${B.group===k?" go":""}" data-bgrp="${k}">${l}</button>`).join("")
+     :"")
    +`</div>`;
+
+  /* The same board Leo signed off on in Outcomes, driven by whichever scope
+     this card is set to — so "Launched in range" as a kanban is one click. */
+  if(B.view==="kanban"){
+    body.innerHTML=ctl+renderKanban(rs,B.scope==="live");
+    sub.innerHTML=rs.length+" of "+ROWS.length+" batches · click a column to filter by that status · "
+     +"click a card to open it in Asana · <b>days</b> and <b>status</b> are NOW figures";
+    return;
+  }
 
   const line=r=>{const sp=(SPB[r.n]&&SPB[r.n].s)||0;
     return `<tr>
@@ -952,12 +1076,105 @@ function calFeed(body,evs,inR){
      :`<div class="daydetail sub">Click a day for its changes. Dimmed days are outside the selected range.</div>`));
 }
 
+/* ---------------- composition ("mix") cards ----------------
+   Part-to-whole, so: a horizontal stacked bar, never a pie. A 2-slice pie is
+   a stat tile, and close slices are unreadable — the form was chosen against
+   the data-viz form table, not by preference.
+
+   The bar is the glance; the list under it is simultaneously the legend, the
+   direct labels and the table view, which is what keeps this readable for a
+   colourblind reader and in light mode where one slot sits under 3:1.
+
+   Above ~6 classes colour stops separating them, so those dimensions (format,
+   avatar) render the list alone with no bar. That is the documented ceiling,
+   not an oversight. */
+const pct=(n,t)=>!t?"0%":(n/t*100)<9.95?(n/t*100).toFixed(1)+"%":Math.round(n/t*100)+"%";
+
+const MIX={
+  res:{t:"Result mix",  dim:"res", kind:"result"},
+  aw: {t:"Awareness",   dim:"aw",  ramp:["--awr-1","--awr-2","--awr-3","--awr-4","--awr-5"],
+       order:["Unaware","Problem Aware","Solution Aware","Product Aware","Most Aware"]},
+  bt: {t:"Brief type",  dim:"bt",  cat:["--cat-1","--cat-2","--cat-3"],
+       order:["ideation","iteration","imitation"]},
+  fm: {t:"Format",      dim:"fm"},
+  av: {t:"Avatar",      dim:"av"}
+};
+const WINNERS=["KPI Winner","Spend Winner","Breakthrough Winner"];
+/* Registered here rather than in the CARD literal because MIX is defined below
+   it and a const cannot be read before its declaration. */
+Object.keys(MIX).forEach(k=>CARD["mix:"+k]={t:MIX[k].t,cls:"",scope:"mix",mix:k});
+
+function sbar(segs,cls){        // segs: [{v, colour, label}]
+  const tot=segs.reduce((a,s)=>a+s.v,0);
+  if(!tot) return "";
+  return `<div class="sbar ${cls||""}">`+segs.filter(s=>s.v>0).map(s=>
+    `<i style="flex:${s.v} 0 0;background:var(${s.colour})" title="${esc(s.label)} — ${s.v} (${pct(s.v,tot)})"></i>`
+  ).join("")+`</div>`;
+}
+
+function mixCard(body,sub,key){
+  const spec=MIX[key], d=dimOf(spec.dim), rs=analysisRows();
+
+  if(spec.kind==="result"){
+    /* Leo's ask, precisely: "Losing Ad %, then Winner % (KPI/Spend Winner) and
+       Breakthrough % as a SUB-% of the winners." So two bars — the first over
+       everything scored, the second renormalised to the winners alone. */
+    const scored=rs.filter(r=>r.res);
+    const lose=scored.filter(r=>r.res==="Losing Ad").length;
+    const wins=WINNERS.map(w=>({w,n:scored.filter(r=>r.res===w).length}));
+    const winTot=wins.reduce((a,x)=>a+x.n,0);
+    const unscored=rs.length-scored.length;
+    if(!scored.length){
+      body.innerHTML=`<div class="empty">Nothing scored yet in this window. ${rs.length} batches, none with a result.</div>`;
+      sub.innerHTML=aLabel(); return;
+    }
+    const rowFor=(label,n,denom,colour,isSub)=>
+      `<div class="mixrow${isSub?" sub":""}${has("res",label)?" active":""}"${label!=="Winners"?` data-dim="res" data-val="${esc(label)}"`:""}>
+         <span class="nm"><span class="swatch" style="background:var(${colour})"></span><em>${esc(label)}</em></span>
+         <span class="n">${n}</span><span class="p">${pct(n,denom)}</span></div>`;
+    body.innerHTML=
+      `<div class="hero"><b>${pct(winTot,scored.length)}</b><span>hit rate · ${winTot} of ${scored.length} scored ads won</span></div>`
+      +`<div class="sblab"><span>Of everything scored</span><span>${scored.length} ads</span></div>`
+      +sbar([{v:lose,colour:"--mute",label:"Losing Ad"},{v:winTot,colour:"--win-2",label:"Winners"}])
+      +rowFor("Losing Ad",lose,scored.length,"--mute")
+      +rowFor("Winners",winTot,scored.length,"--win-2")
+      +(winTot?`<div class="sblab" style="margin-top:9px"><span>Of the winners only</span><span>${winTot} ads</span></div>`
+        +sbar(wins.map((x,i)=>({v:x.n,colour:"--win-"+(i+1),label:x.w})),"sbar2")
+        +wins.map((x,i)=>rowFor(x.w,x.n,winTot,"--win-"+(i+1),true)).join(""):"")
+      +(unscored?`<div class="recon"><span>${unscored} more launched with no result recorded yet — left out of every percentage above</span></div>`:"");
+    sub.innerHTML=aLabel()+(FILTERS.length?" · filtered":"");
+    return;
+  }
+
+  const counts=countsFor(d,rs);
+  let ent=Object.entries(counts);
+  if(spec.order) ent.sort((a,b)=>spec.order.indexOf(a[0])-spec.order.indexOf(b[0]));
+  else ent.sort((a,b)=>b[1]-a[1]);
+  if(!ent.length){ body.innerHTML=`<div class="empty">No values in this window.</div>`; sub.innerHTML=aLabel(); return; }
+  const tot=ent.reduce((a,[,n])=>a+n,0);
+  const ramp=spec.ramp||spec.cat;
+  const colourOf=i=>ramp?ramp[Math.min(i,ramp.length-1)]:"--bar";
+  const showBar=!!ramp && ent.length<=6;
+  body.innerHTML=
+     (showBar?`<div class="sblab"><span>${esc(spec.t)}</span><span>${tot} batches</span></div>`
+       +sbar(ent.map(([k,n],i)=>({v:n,colour:colourOf(i),label:k}))):"")
+    +ent.map(([k,n],i)=>
+      `<div class="mixrow${has(spec.dim,k)?" active":""}" data-dim="${esc(spec.dim)}" data-val="${esc(k)}">
+         <span class="nm">${showBar?`<span class="swatch" style="background:var(${colourOf(i)})"></span>`:""}<em>${esc(k)}</em></span>
+         <span class="n">${n}</span><span class="p">${pct(n,tot)}</span></div>`).join("")
+    +(!showBar&&ramp?`<div class="recon"><span>${ent.length} values — past six, colour stops telling classes apart, so this one is a list</span></div>`:"");
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${tot}</b> batches · `
+    +aLabel()+(FILTERS.length?" · filtered":"");
+}
+
 function cycleCard(body,sub){
   /* Real elapsed time, not a stand-in: Day Started and Day Launched are both
      set by an Asana rule the moment Status flips, so they are retroactive and
      cost no story calls. Edit time is start→launch; the second column is how
      that landed against the due date, negative meaning early. */
-  const done=launchedInRange(rows()).filter(r=>r.launched&&r.started);
+  /* Cycle time reads the MIX window too — over 7 days it is 8 launches and the
+     averages swing wildly. Same reason the composition cards use it. */
+  const done=analysisRows().filter(r=>r.launched&&r.started);
   const mk=(key,label)=>{
     const by={};
     done.forEach(r=>{const k=r[key]||"(blank)";
@@ -976,7 +1193,7 @@ function cycleCard(body,sub){
   };
   body.innerHTML=`<div class="tw">${mk("bt","Brief type")}<div style="height:10px"></div>${mk("fm","Format")}</div>`;
   sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${done.length}</b>`
-   +` launched in range with both dates · edit days = Day Started → Day Launched · vs due is + late, − early`;
+   +` with both dates · ${aLabel()} · edit days = Day Started → Day Launched · vs due is + late, − early`;
 }
 
 /* ---------------- people ----------------
@@ -1107,9 +1324,13 @@ function personCard(body,sub){
    what lets a number here be checked against Ads Manager without arithmetic.
    Today is its own preset when you do want the partial day. */
 let pick={from:null,to:null}, calM=new Date();
+let CALFOR="os";        // which window the picker is currently editing
 const PRESETS=[["Today",0],["Last 3 days",3],["Last 7 days",7],["Last 14 days",14],["Last 30 days",30],["Last 90 days",90]];
 function openCal(){
-  pick={...RANGE}; calM=new Date(RANGE.to+"T12:00:00Z"); calM.setUTCDate(1);
+  const base=CALFOR==="analysis"?ARANGE:RANGE;
+  pick={from:base.from,to:base.to}; calM=new Date(base.to+"T12:00:00Z"); calM.setUTCDate(1);
+  $("#calTitle").textContent=CALFOR==="analysis"
+    ? "Mix window — composition cards only" : "Date range — the whole OS";
   $("#presets").innerHTML=PRESETS.map(([l,d])=>`<button data-p="${d}">${l}</button>`).join("")
    +`<button data-w="this">This week</button><button data-w="last">Last week</button><button data-w="month">This month</button>`;
   drawCal(); $("#scrim").hidden=false;
@@ -1164,6 +1385,22 @@ document.addEventListener("click",e=>{
   const ls=e.target.closest("[data-ls]"); if(ls){V.launch.split=ls.dataset.ls;draw();return;}
   const fv=e.target.closest("[data-feed]"); if(fv){V.feed=fv.dataset.feed;draw();return;}
   const kn=e.target.closest("[data-kan]"); if(kn){V.kan.scope=kn.dataset.kan;draw();return;}
+  const bv=e.target.closest("[data-bview]"); if(bv){V.board.view=bv.dataset.bview;draw();return;}
+  const asc=e.target.closest("[data-asc]"); if(asc){ASCOPE=asc.dataset.asc;draw();return;}
+  const ar=e.target.closest("[data-ar]");
+  if(ar){const k=ar.dataset.ar;
+    if(k==="pick"){ CALFOR="analysis"; openCal(); return; }
+    /* "All time" reaches back past the payload's 90-day spend window on
+       purpose. Anchoring it to DATA.since found 128 of the 150 batches that
+       have ever launched — the 22 that went live before the window silently
+       vanished from every percentage. Launch dates are carried on the batch
+       itself, so they are not limited by how far back spend goes. */
+    if(k==="all") ARANGE={key:k,from:"1970-01-01",to:TODAY,label:"All time"};
+    else if(k==="os") ARANGE={key:k,from:RANGE.from,to:RANGE.to,label:"Match OS range"};
+    else { const n=+k;
+      ARANGE={key:k,from:addD(TODAY,-n),to:addD(TODAY,-1),
+        label:n===180?"Last 6 months":"Last "+n+" days"}; }
+    draw();return;}
   const bg=e.target.closest("[data-bgrp]"); if(bg){V.board.group=bg.dataset.bgrp;draw();return;}
   const bd=e.target.closest("[data-board]"); if(bd){V.board.scope=bd.dataset.board;draw();return;}
   const cal=e.target.closest("[data-cal]");
@@ -1189,7 +1426,7 @@ document.addEventListener("click",e=>{
   const p=e.target.closest("[data-p]");
   if(p){const n=+p.dataset.p;
     pick = n===0 ? {from:TODAY,to:TODAY}                        // Today, partial
-                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     
+                 : {from:addD(TODAY,-n),to:addD(TODAY,-1)};     // N days ending yesterday
     drawCal();return;}
   const w=e.target.closest("[data-w]");
   if(w){const mon=weekStart(TODAY);
@@ -1198,7 +1435,7 @@ document.addEventListener("click",e=>{
     if(w.dataset.w==="month")pick={from:TODAY.slice(0,8)+"01",to:TODAY};
     drawCal();return;}
 });
- 
+/* drag to reorder — only from the ⠿ handle, so text stays selectable */
 let dragId=null;
 document.addEventListener("mousedown",e=>{
   const c=e.target.closest(".card"); if(c) c.draggable=!!e.target.closest("[data-grab]");
@@ -1216,9 +1453,16 @@ document.addEventListener("drop",e=>{const c=e.target.closest(".card");
 document.addEventListener("dragend",()=>{dragId=null;
   document.querySelectorAll(".card").forEach(x=>{x.draggable=false;x.classList.remove("dragging","over");});});
 
-$("#dateBtn").onclick=openCal;
+$("#dateBtn").onclick=()=>{CALFOR="os";openCal();};
 $("#cancel").onclick=()=>$("#scrim").hidden=true;
-$("#apply").onclick=()=>{if(pick.from){setRange(pick.from,pick.to||pick.from);draw();}
+$("#apply").onclick=()=>{
+  if(pick.from){
+    const to=pick.to||pick.from;
+    if(CALFOR==="analysis"){ ASCOPE="launched";
+      ARANGE={key:"custom",from:pick.from,to:to,label:md(pick.from)+" → "+md(to)}; }
+    else setRange(pick.from,to);
+    draw();
+  }
   $("#scrim").hidden=true;};
 $("#scrim").onclick=e=>{if(e.target.id==="scrim")$("#scrim").hidden=true;};
 
@@ -1232,12 +1476,11 @@ function popup(anchor,html,wire){
     document.addEventListener("click",cl);},0);
   return pop;
 }
-
-
+/* Every dimension, reachable from every tab. This is what lets Outcomes stay
+   sparse without giving up the crisscross. */
 $("#filtBtn").onclick=e=>popup(e.target,
   DIMS.map(d=>{
-    const rs=rowsFor(d.k), c={};
-    rs.forEach(r=>{const v=d.get(r); if(v!=null)c[v]=(c[v]||0)+1;});
+    const c=countsFor(d,rowsFor(d.k));
     let ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);
     if(d.order) ent.sort((a,b)=>d.order.indexOf(a[0])-d.order.indexOf(b[0]));
     if(!ent.length)return "";
@@ -1319,6 +1562,9 @@ function adopt(d){
   EVENTS=d.events||[]; SPEND=d.spend||[];
   
   if(!RANGE.from) setRange(addD(TODAY,-7),addD(TODAY,-1));
+  
+  
+  if(!ARANGE.from) ARANGE={key:"30",from:addD(TODAY,-30),to:addD(TODAY,-1),label:"Last 30 days"};
 }
 function fail(msg){
   document.querySelector("#grid").innerHTML=
