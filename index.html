@@ -477,16 +477,27 @@ function toggle(dim,val){
 
 
 const ALLTIME={key:"all",from:"1970-01-01",to:"",label:"All time"};
+
+
+
+const BASES={added:"Added to the sheet in the window",
+             launched:"Launched in the window",
+             all:"Every batch, ignoring dates"};
 let AWIN={};                       
-let ASCOPE="launched";             
 function winFor(id){
-  if(!AWIN[id]) AWIN[id]={...ALLTIME,to:TODAY};
+  if(!AWIN[id]) AWIN[id]={...ALLTIME,to:TODAY,basis:defaultBasis(id)};
+  if(!AWIN[id].basis) AWIN[id].basis=defaultBasis(id);
   return AWIN[id];
 }
+function defaultBasis(id){
+  const spec=MIX[String(id).slice(4)];
+  return (spec&&spec.basis) || "launched";
+}
 function analysisRows(id){
-  const rs=rows();
-  if(ASCOPE==="all") return rs;
-  const w=winFor(id);
+  const rs=rows(), w=winFor(id);
+  if(w.basis==="all") return rs;
+  if(w.basis==="added")
+    return rs.filter(r=>r.created && r.created>=w.from && r.created<=w.to);
   return launchesBetween(rs,w.from,w.to).map(x=>x.r);
 }
  
@@ -502,10 +513,11 @@ function launchesBetween(rowSet,from,to){
   return out;
 }
 const aLabel=id=>{
-  if(ASCOPE==="all") return "every batch, ignoring dates";
   const w=winFor(id);
-  return w.key==="all" ? "every batch that has ever launched"
-                       : "launched "+md(w.from)+" → "+md(w.to);
+  if(w.basis==="all") return "every batch, ignoring dates";
+  const verb=w.basis==="added"?"added":"launched";
+  return w.key==="all" ? "every batch ever "+verb
+                       : verb+" "+md(w.from)+" → "+md(w.to);
 };
 
 
@@ -1090,13 +1102,16 @@ function calFeed(body,evs,inR){
 const pct=(n,t)=>!t?"0%":(n/t*100)<9.95?(n/t*100).toFixed(1)+"%":Math.round(n/t*100)+"%";
 
 const MIX={
-  res:{t:"Result mix",  dim:"res", kind:"result"},
-  aw: {t:"Awareness",   dim:"aw",  ramp:["--awr-1","--awr-2","--awr-3","--awr-4","--awr-5"],
+  /* basis: which date puts a batch in the window. The composition cards count
+     what was ADDED, so work sitting unedited in the sheet is included; the
+     result mix stays on LAUNCHED because an unlaunched ad has no result. */
+  res:{t:"Result mix",  dim:"res", kind:"result", basis:"launched"},
+  aw: {t:"Awareness",   dim:"aw",  basis:"added", ramp:["--awr-1","--awr-2","--awr-3","--awr-4","--awr-5"],
        order:["Unaware","Problem Aware","Solution Aware","Product Aware","Most Aware"]},
-  bt: {t:"Brief type",  dim:"bt",  cat:["--cat-1","--cat-2","--cat-3"],
+  bt: {t:"Brief type",  dim:"bt",  basis:"added", cat:["--cat-1","--cat-2","--cat-3"],
        order:["ideation","iteration","imitation"]},
-  fm: {t:"Format",      dim:"fm"},
-  av: {t:"Avatar",      dim:"av"}
+  fm: {t:"Format",      dim:"fm",  basis:"added"},
+  av: {t:"Avatar",      dim:"av",  basis:"added"}
 };
 const WINNERS=["KPI Winner","Spend Winner","Breakthrough Winner"];
 /* Registered here rather than in the CARD literal because MIX is defined below
@@ -1208,6 +1223,7 @@ function mixCard(body,sub,key){
   const chip=winChip(cardId,showChart);
   if(!ent.length){ body.innerHTML=chip+`<div class="empty">No values in this window.</div>`; sub.innerHTML=aLabel(cardId); return; }
   const tot=ent.reduce((a,[,n])=>a+n,0);
+  const blank=rs.length-tot;          // in the window but with this field empty
   const colourOf=i=>ramp?ramp[Math.min(i,ramp.length-1)]:"--bar";
   const segs=ent.map(([k,n],i)=>({v:n,colour:colourOf(i),label:k}));
   body.innerHTML=chip
@@ -1219,8 +1235,15 @@ function mixCard(body,sub,key){
       `<div class="mixrow${has(spec.dim,k)?" active":""}" data-dim="${esc(spec.dim)}" data-val="${esc(k)}">
          <span class="nm">${showChart?`<span class="swatch" style="background:var(${colourOf(i)})"></span>`:""}<em>${esc(k)}</em></span>
          <span class="n">${n}</span><span class="p">${pct(n,tot)}</span></div>`).join("")
+    /* Counting what was ADDED pulls in batches nobody has filled in yet — in the
+       last 14 days, 35 of 43 have no avatar recorded. Dropping those silently
+       would make every percentage a share of a denominator the card never
+       mentions, so say it out loud. */
+    +(blank?`<div class="recon"><span>${blank} of the ${rs.length} batches in this window have no `
+        +`${esc(spec.t.toLowerCase())} recorded yet — left out of the percentages above</span></div>`:"")
     +(!showChart&&ramp?`<div class="recon"><span>${ent.length} values — past six, colour stops telling classes apart, so this one stays a list</span></div>`:"");
-  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${tot}</b> batches · `
+  sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${tot}</b>`
+    +(blank?` of ${rs.length}`:"")+` batches · `
     +aLabel(cardId)+(FILTERS.length?" · filtered":"");
 }
 
@@ -1505,8 +1528,8 @@ $("#apply").onclick=()=>{
   if(pick.from){
     const to=pick.to||pick.from;
     if(CALFOR==="os") setRange(pick.from,to);
-    else { ASCOPE="launched";
-      AWIN[CALFOR]={key:"custom",from:pick.from,to:to,label:md(pick.from)+" → "+md(to)}; }
+    else { const basis=winFor(CALFOR).basis;
+      AWIN[CALFOR]={key:"custom",from:pick.from,to:to,label:md(pick.from)+" → "+md(to),basis}; }
     draw();
   }
   $("#scrim").hidden=true;};
@@ -1534,23 +1557,25 @@ function openWinMenu(anchor,id){
     +WINPRESETS.map(([k,l])=>`<div class="row" data-wp="${esc(id)}|${k}">${l}
         ${cur.key===k?'<span class="cnt">✓</span>':""}</div>`).join("")
     +`<div class="row" data-wp="${esc(id)}|pick">Pick dates…</div>`
-    +`<div class="grp">Count</div>`
-    +[["launched","Batches launched in the window"],["all","Every batch, ignoring dates"]]
-      .map(([k,l])=>`<div class="row" data-wsc="${k}">${l}${ASCOPE===k?'<span class="cnt">✓</span>':""}</div>`).join(""),
+    +`<div class="grp">Count batches that were</div>`
+    +Object.keys(BASES).map(k=>`<div class="row" data-wsc="${esc(id)}|${k}">${BASES[k]}`
+        +`${cur.basis===k?'<span class="cnt">✓</span>':""}</div>`).join(""),
     pop=>{
       pop.querySelectorAll("[data-wp]").forEach(el=>el.onclick=()=>{
         const [cid,k]=el.dataset.wp.split("|");
         pop.remove();
         if(k==="pick"){ CALFOR=cid; openCal(); return; }
-        if(k==="all") AWIN[cid]={key:k,from:"1970-01-01",to:TODAY,label:"All time"};
-        else if(k==="os") AWIN[cid]={key:k,from:RANGE.from,to:RANGE.to,label:"OS range"};
+        const basis=winFor(cid).basis;
+        if(k==="all") AWIN[cid]={key:k,from:"1970-01-01",to:TODAY,label:"All time",basis};
+        else if(k==="os") AWIN[cid]={key:k,from:RANGE.from,to:RANGE.to,label:"OS range",basis};
         else { const n=+k;
           AWIN[cid]={key:k,from:addD(TODAY,-n),to:addD(TODAY,-1),
-            label:n===180?"Last 6 months":"Last "+n+" days"}; }
+            label:n===180?"Last 6 months":"Last "+n+" days",basis}; }
         draw();
       });
       pop.querySelectorAll("[data-wsc]").forEach(el=>el.onclick=()=>{
-        ASCOPE=el.dataset.wsc; pop.remove(); draw();
+        const [cid,k]=el.dataset.wsc.split("|");
+        winFor(cid).basis=k; pop.remove(); draw();
       });
     });
 }
