@@ -490,11 +490,17 @@ function winFor(id){
   return AWIN[id];
 }
 function defaultBasis(id){
-  const spec=MIX[String(id).slice(4)];
-  return (spec&&spec.basis) || "launched";
+  const s=String(id);
+  if(s.slice(0,4)==="mix:"){ const spec=MIX[s.slice(4)]; return (spec&&spec.basis)||"launched"; }
+  
+
+  if(s.slice(0,4)==="dim:") return "added";
+  return "launched";
 }
-function analysisRows(id){
-  const rs=rows(), w=winFor(id);
+
+
+function analysisRows(id,exclude){
+  const rs=rowsFor(exclude===undefined?null:exclude), w=winFor(id);
   if(w.basis==="all") return rs;
   if(w.basis==="added")
     return rs.filter(r=>r.created && r.created>=w.from && r.created<=w.to);
@@ -548,7 +554,9 @@ const CARD={
  people: {t:"Everyone",            cls:"full", scope:"range", render:peopleCard},
  person: {t:"Person",              cls:"full", scope:"range", render:personCard}
 };
-DIMS.forEach(d=>CARD["dim:"+d.k]={t:d.t,cls:"",scope:"now",dim:d.k});
+
+
+DIMS.forEach(d=>CARD["dim:"+d.k]={t:d.t,cls:"",scope:"mix",dim:d.k});
 
 
 
@@ -588,6 +596,10 @@ let V={launch:{gran:"total",split:"person"}, feed:"week", board:{scope:"live",gr
 
 function draw(){
   SPB=spendPerBatch();
+  
+
+  const wf=FILTERS.filter(f=>f.dim==="who");
+  V.person = wf.length===1 ? wf[0].val : null;
   $("#rangeLab").innerHTML = (RANGE.from===RANGE.to ? md(RANGE.from)
       : md(RANGE.from)+" → "+md(RANGE.to)+"  ·  "+(dBetween(RANGE.from,RANGE.to)+1)+"d")
     + (RANGE.to>COMPLETE ? ` · <span class="stale">includes a partial day</span>` : "");
@@ -607,7 +619,7 @@ function draw(){
       <h3>${esc(c.t)}${sc}</h3><div class="sub"></div><div class="body"></div>`;
     g.appendChild(el);
     const b=el.querySelector(".body"), sb=el.querySelector(".sub");
-    if(c.dim) barCard(b,dimOf(c.dim),sb);
+    if(c.dim) barCard(b,dimOf(c.dim),sb,id);
     else if(c.mix) mixCard(b,sb,c.mix);
     else c.render(b,sb);
   });
@@ -650,18 +662,35 @@ function drawFilters(){
     `</span>`).join("")+`<button id="clearAll">Clear all</button>`;
 }
 
-function barCard(body,d,sub){
-  const rs=rowsFor(d.k), counts=countsFor(d,rs);
+function barCard(body,d,sub,cardId){
+  cardId=cardId||("dim:"+d.k);
+  const rs=analysisRows(cardId,d.k), counts=countsFor(d,rs);
   let ent=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   if(d.order) ent.sort((a,b)=>d.order.indexOf(a[0])-d.order.indexOf(b[0]));
-  if(!ent.length){ body.innerHTML=`<div class="empty">No values</div>`; return; }
-  const max=ent[0][1], tot=rs.length;
-  if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rs.length}</b> batches · ${ent.length} values`;
+  const chip=winChip(cardId,false);
   body.className="body bars";
-  body.innerHTML=ent.map(([k,c])=>`<div class="bar-row${has(d.k,k)?" active":""}" data-dim="${esc(d.k)}" data-val="${esc(k)}">
+  if(!ent.length){
+    body.innerHTML=chip+`<div class="empty">No values in this window.</div>`;
+    if(sub) sub.innerHTML=aLabel(cardId)+(FILTERS.length?" · filtered":"");
+    return;
+  }
+  const max=ent[0][1];
+  const sum=ent.reduce((a,[,n])=>a+n,0);
+  /* Person is multi-valued — one batch counts under two people — so its shares
+     are of the BATCH count, not of the sum. Everything else divides by the rows
+     that actually carry a value, with the blanks named underneath. */
+  const den=d.multi?rs.length:sum;
+  const blank=d.multi?0:rs.length-sum;
+  if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${sum}</b>`
+    +(blank?` of ${rs.length}`:"")+` · ${ent.length} values · `
+    +aLabel(cardId)+(FILTERS.length?" · filtered":"");
+  body.innerHTML=chip
+    +ent.map(([k,c])=>`<div class="bar-row${has(d.k,k)?" active":""}" data-dim="${esc(d.k)}" data-val="${esc(k)}">
      <div class="track"><div class="fill" style="width:${100*c/max}%"></div></div>
      <span class="label" title="${esc(k)}">${esc(k)}</span>
-     <span class="count">${c} · ${Math.round(100*c/tot)}%</span></div>`).join("");
+     <span class="count">${c} · ${Math.round(100*c/den)}%</span></div>`).join("")
+    +(blank?`<div class="recon"><span>${blank} of the ${rs.length} batches in this window have no `
+        +`${esc(d.t.toLowerCase())} recorded yet — left out of the percentages above</span></div>`:"");
 }
 
 /* ---------------- at a glance ----------------
@@ -1294,7 +1323,10 @@ function personStats(name,rs){
 }
 
 function peopleCard(body,sub){
-  const rs=rows();
+  /* rowsFor("who"), not rows(): these two cards ARE the person picker, so they
+     must keep showing everyone while one person is selected — otherwise picking
+     Utkarsh collapses the table to Utkarsh and there is no way to click Mei. */
+  const rs=rowsFor("who");
   const list=PEOPLE.map(p=>({p,st:personStats(p.name,rs)}))
     .sort((a,b)=>(b.st.asS.length+b.st.asE.length)-(a.st.asS.length+a.st.asE.length));
   body.innerHTML=`<div class="tw"><table><thead><tr>
@@ -1314,8 +1346,19 @@ function peopleCard(body,sub){
     +` · <b>spend as strategist</b> and <b>spend as editor</b> are independent partitions of the same money — never add them`;
 }
 
+/** Selecting a person IS the `who` filter — see the note at the top of draw().
+    Toggles, so clicking the selected person clears back to the whole team. */
+function pickPerson(p){
+  const on=FILTERS.some(f=>f.dim==="who"&&f.val===p);
+  FILTERS=FILTERS.filter(f=>f.dim!=="who");        // one person at a time from here
+  if(!on) FILTERS.push({dim:"who",val:p});
+  V.stripSel=null;
+  if(TAB!=="ppl") TAB="ppl";
+  draw();
+}
+
 function personCard(body,sub){
-  const rs=rows();
+  const rs=rowsFor("who");        // see peopleCard — the picker must stay whole
   const sel=V.person;
   const chips=`<div class="pgrid">`+PEOPLE.map(p=>
     `<button class="pbtn${sel===p.name?" go":""}" data-person="${esc(p.name)}">
@@ -1452,9 +1495,7 @@ document.addEventListener("click",e=>{
   const exp=e.target.closest("[data-exp]");
   if(exp){const k=exp.dataset.exp; V.expand.has(k)?V.expand.delete(k):V.expand.add(k); draw(); return;}
   const pr=e.target.closest("[data-person]");
-  if(pr){V.person=V.person===pr.dataset.person?null:pr.dataset.person;V.stripSel=null;
-    if(TAB!=="ppl"){TAB="ppl";}
-    draw();return;}
+  if(pr){pickPerson(pr.dataset.person);return;}
   const stp=e.target.closest("[data-strip]");
   if(stp){V.stripSel=V.stripSel===stp.dataset.strip?null:stp.dataset.strip;draw();return;}
   const bk=e.target.closest("[data-bk]");
