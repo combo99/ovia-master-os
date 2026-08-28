@@ -85,6 +85,12 @@
   .scope.range{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
   .ctl{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;align-items:center}
   .ctl .lab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-right:1px}
+   
+  .pbar{display:inline-block;vertical-align:middle;width:56px;height:6px;border-radius:3px;
+    background:var(--soft);overflow:hidden}
+  .pbar i{display:block;height:100%;border-radius:3px}
+  .pct{display:inline-block;min-width:34px;text-align:right;margin-left:6px;
+    font-family:var(--mono);font-size:11px;color:var(--ink2)}
   .recon{margin-top:8px;padding-top:7px;border-top:1px solid var(--soft);font-size:11.5px;color:var(--ink3);
     display:flex;flex-wrap:wrap;gap:4px 14px}
   .recon b{color:var(--ink2);font-family:var(--mono);font-weight:600}
@@ -333,7 +339,12 @@ const STAGE=["Writing Copy","Ready To Be Edited","In Progress","Pending Review",
 const em=st=>st?((SE[st]||"")+" "+st).trim():"—";
 const nameOf=x=>x||"—";
 
-let DATA=null,ROWS=[],EVENTS=[],SPEND=[],KEYS={},STATS={},PEOPLE=[];
+
+const podLabel=id=>{const p=PODS.find(x=>x.id===id);return p?p.name:"(no pod)";};
+const podLead=id=>{const p=PODS.find(x=>x.id===id);return p?p.lead:"";};
+const podMembers=id=>{const p=PODS.find(x=>x.id===id);return p?p.members:[];};
+
+let DATA=null,ROWS=[],EVENTS=[],SPEND=[],KEYS={},STATS={},PEOPLE=[],PODS=[],TARGETS={};
 let DATA_DAY="",COMPLETE="";        
 
 
@@ -380,14 +391,46 @@ function spendInRange(){return SPEND.filter(r=>inRange(r.d));}
 
 
 
+
+
+function ownerOn(m,day){
+  const seg=m.own;
+  if(!seg||!seg.length) return {s:m.s,e:m.e,pod:m.pod||""};
+  let cur=seg[0];
+  for(let i=0;i<seg.length;i++){ if(seg[i].from<=day) cur=seg[i]; else break; }
+  return cur;
+}
+
 function spendByRole(role,rowSet){
   const ok=rowSet?new Set(rowSet.map(r=>r.n)):null;
   const by={};
   spendInRange().forEach(r=>{
-    const m=keyMeta(r.k),who=role==="s"?m.s:m.e;
+    const m=keyMeta(r.k),own=ownerOn(m,r.d),who=role==="s"?own.s:own.e;
     if(!who)return;                       
-    if(ok&&(m.n==null||!ok.has(m.n)))return;   
+    
+
+    if(ok&&m.n==null&&FILTERS.length)return;
+    if(ok&&m.n!=null&&!ok.has(m.n))return;
     const o=by[who]=by[who]||{spend:0,purch:0,value:0,n:new Set(),keys:{}};
+    o.spend+=r.s;o.purch+=r.p;o.value+=r.v;if(m.n!=null)o.n.add(m.n);
+    const kk=o.keys[r.k]=o.keys[r.k]||{spend:0,purch:0,value:0,label:m.label,n:m.n};
+    kk.spend+=r.s;kk.purch+=r.p;kk.value+=r.v;
+  });
+  return by;
+}
+
+
+
+function spendByPod(rowSet){
+  const ok=rowSet?new Set(rowSet.map(r=>r.n)):null;
+  const by={};
+  spendInRange().forEach(r=>{
+    const m=keyMeta(r.k),own=ownerOn(m,r.d);
+    const pod=own.pod||"";
+    if(ok&&m.n==null&&FILTERS.length)return;
+    if(ok&&m.n!=null&&!ok.has(m.n))return;
+    const id=pod||"(no pod)";
+    const o=by[id]=by[id]||{spend:0,purch:0,value:0,n:new Set(),keys:{}};
     o.spend+=r.s;o.purch+=r.p;o.value+=r.v;if(m.n!=null)o.n.add(m.n);
     const kk=o.keys[r.k]=o.keys[r.k]||{spend:0,purch:0,value:0,label:m.label,n:m.n};
     kk.spend+=r.s;kk.purch+=r.p;kk.value+=r.v;
@@ -422,6 +465,9 @@ function spendPerBatch(){
 const DIMS=[
  
 
+ 
+
+ {k:"pod",    t:"Pod",        get:r=>podLabel(r.pod)},
  {k:"who",    t:"Person",     get:r=>null, multi:r=>[r.s,r.e].filter(Boolean)},
  {k:"s",      t:"Strategist", get:r=>nameOf(r.s)},
  {k:"e",      t:"Editor",     get:r=>r.e||null},
@@ -544,6 +590,7 @@ const launchedInRange=rowSet=>launchesInRange(rowSet).map(x=>x.r);
  
 const CARD={
  kpi:    {t:"At a glance",         cls:"full", render:kpiCard},
+ pods:   {t:"Pod leaderboard",     cls:"full", scope:"range", render:podCard},
  spendS: {t:"Spend by strategist", cls:"wide", scope:"range", render:(b,s)=>spendCard(b,"s",s)},
  spendE: {t:"Spend by editor",     cls:"wide", scope:"range", render:(b,s)=>spendCard(b,"e",s)},
  launch: {t:"Launched",            cls:"full", scope:"range", render:launchCard},
@@ -560,13 +607,16 @@ DIMS.forEach(d=>CARD["dim:"+d.k]={t:d.t,cls:"",scope:"mix",dim:d.k});
 
 
 
+
+
 const TABS=[
+ {id:"pod", t:"Pods",             cards:["pods","kpi","launch","spendS","spendE","board"]},
  {id:"out", t:"Outcomes",         cards:["kpi","spendS","spendE","launch","mix:res","kanban","feed","board"]},
  {id:"cs",  t:"Creative Strategy", cards:["kpi","launch","mix:bt","mix:aw","mix:av","mix:res","cycle","board"]},
  {id:"ed",  t:"Editing",           cards:["kpi","spendE","launch","cycle","mix:fm","dim:st","dim:age","dim:due","board"]},
  {id:"ppl", t:"People",            cards:["people","person","mix:res","mix:aw","mix:bt"]}
 ];
-let TAB="out";
+let TAB="pod";
 const tabOf=id=>TABS.find(t=>t.id===id);
 
 
@@ -728,6 +778,86 @@ function kpiCard(body,sub){
 /* ---------------- spend, expandable ----------------
    The chevron opens the batches behind a person's number; the NAME still
    filters. Two targets in one cell, so both gestures stay available. */
+/* ---------------- pods ----------------
+   The unit the company actually runs on since 2026-08-26. Three pods, each a
+   strategist lead plus their editors, competing on two outcome KPIs:
+   16 concepts launched a week and $125,000 of spend a month, PER POD.
+
+   Unlike the two role tables, this one IS a single partition — a batch has two
+   owners but they sit in the same pod by construction, so pod spend can be
+   ranked and shares genuinely add to 100% of owned money. Unowned spend
+   (content batches, orphans) gets its own line rather than being spread across
+   the pods, because crediting nobody's money to somebody is how a leaderboard
+   stops being trusted. */
+function podCard(body,sub){
+  const rs=rows();
+  const money=spendByPod(rs);
+  const L=launchesInRange(rs);
+  const launch={}; L.forEach(({r})=>{const id=r.pod||"(no pod)";launch[id]=(launch[id]||0)+1;});
+
+  // Every configured pod renders, spend or not; then anything unowned.
+  const ids=PODS.map(p=>p.id);
+  Object.keys(money).concat(Object.keys(launch)).forEach(id=>{
+    if(ids.indexOf(id)<0) ids.push(id);
+  });
+
+  const t=spendSplit();
+  const owned=ids.filter(id=>id!=="(no pod)").reduce((a,id)=>a+((money[id]||{}).spend||0),0);
+
+  /* Pace against the target, scaled to the selected range: a 7-day window is
+     judged against one week of the concept target and 7/30ths of the monthly
+     spend target. Stated out loud under the table so nobody reads a 3-day
+     window as a failed month. */
+  const days=Math.max(1,dBetween(RANGE.from,RANGE.to)+1);
+  const cTarget=(TARGETS.conceptsPerWeek||16)*days/7;
+  const sTarget=(TARGETS.spendPerMonth||125000)*days/30;
+
+  const rank=ids.filter(id=>id!=="(no pod)")
+    .map(id=>({id,spend:(money[id]||{}).spend||0,n:launch[id]||0,
+               purch:(money[id]||{}).purch||0,value:(money[id]||{}).value||0,
+               batches:((money[id]||{}).n||new Set()).size}))
+    // Leo's spec: rank by SPEND, concepts launched breaks a tie.
+    .sort((a,b)=>b.spend-a.spend||b.n-a.n);
+
+  const medal=i=>["🥇","🥈","🥉"][i]||"";
+  const bar=(v,target)=>{const pct=target?Math.min(150,v/target*100):0;
+    const col=pct>=100?"var(--accent)":pct>=70?"var(--bar)":"var(--hot)";
+    return `<div class="pbar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>`;};
+
+  body.innerHTML=`<div class="tw"><table><thead><tr>
+      <th>#</th><th>Pod</th><th>Lead</th><th>Spend</th><th>vs target</th>
+      <th>Concepts</th><th>vs target</th><th>Batches</th><th>Purch</th><th>CPA</th><th>ROAS</th>
+    </tr></thead><tbody>`
+   +(rank.length?rank.map((p,i)=>`<tr class="click" data-dim="pod" data-val="${esc(podLabel(p.id))}">
+      <td style="font-size:15px">${medal(i)||(i+1)}</td>
+      <td class="txt"><b>${esc(podLabel(p.id))}</b></td>
+      <td class="txt" style="color:var(--ink3)">${esc(podLead(p.id)||"—")}</td>
+      <td>${usd(p.spend)}</td>
+      <td>${bar(p.spend,sTarget)}<span class="pct">${sTarget?Math.round(p.spend/sTarget*100):0}%</span></td>
+      <td><b>${p.n}</b></td>
+      <td>${bar(p.n,cTarget)}<span class="pct">${cTarget?Math.round(p.n/cTarget*100):0}%</span></td>
+      <td>${p.batches}</td><td>${p.purch}</td>
+      <td>${p.purch?"$"+(p.spend/p.purch).toFixed(2):"—"}</td>
+      <td>${p.spend?(p.value/p.spend).toFixed(2):"—"}</td></tr>`).join("")
+     :`<tr><td colspan="11" class="empty">This payload predates pods — run masterOsPull
+          with the current Code.gs and the leaderboard fills in.</td></tr>`)
+   +`</tbody></table></div>`;
+
+  const unowned=(money["(no pod)"]||{}).spend||0;
+  body.insertAdjacentHTML("beforeend",
+    `<div class="recon"><span>Account <b>${usd(t.acct)}</b></span>
+      <span>Owned by a pod <b>${usd(owned)}</b> (${t.acct?(owned/t.acct*100).toFixed(1):"0.0"}%)</span>
+      <span>Content + unowned <b>${usd(unowned)}</b> (${t.acct?(unowned/t.acct*100).toFixed(1):"0.0"}%)</span>
+      ${t.orphan?`<span>Not in Asana <b>${usd(t.orphan)}</b></span>`:""}
+      <span>Target for this ${days}-day window <b>${usd(sTarget)}</b> spend · <b>${cTarget.toFixed(1)}</b> concepts</span>
+    </div>`);
+
+  if(sub) sub.innerHTML=`<b style="color:var(--ink);font-family:var(--mono);font-size:15px">${rank.length}</b>`
+    +` pods · ranked by spend, concepts launched breaks a tie`
+    +` · targets are ${TARGETS.conceptsPerWeek||16} concepts/week and ${usd(TARGETS.spendPerMonth||125000)}/month PER POD, pro-rated to the range`
+    +` · click a pod to filter the whole dashboard to it`;
+}
+
 function spendCard(body,role,sub){
   /* One role per call. The strategist table and the editor table are built from
      the same spend rows by two different joins and must never be added
@@ -1700,6 +1830,9 @@ $("#export").onclick=()=>{
 
 function adopt(d){
   DATA=d; KEYS=d.keys||{}; STATS=d.stats||{}; PEOPLE=d.people||[];
+  
+
+  PODS=d.pods||[]; TARGETS=d.targets||{conceptsPerWeek:16,spendPerMonth:125000};
   TODAY=localToday();                       
   DATA_DAY=d.today||TODAY;
   COMPLETE=d.complete||addD(DATA_DAY,-1);   
