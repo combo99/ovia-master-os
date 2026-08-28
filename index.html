@@ -398,7 +398,10 @@ function ownerOn(m,day){
   if(!seg||!seg.length) return {s:m.s,e:m.e,pod:m.pod||""};
   let cur=seg[0];
   for(let i=0;i<seg.length;i++){ if(seg[i].from<=day) cur=seg[i]; else break; }
-  return cur;
+  
+
+  const s=cur.s||m.s||null, e=cur.e||m.e||null;
+  return {s:s, e:e, pod:(cur.s||cur.e)?(cur.pod||m.pod||""):(m.pod||cur.pod||"")};
 }
 
 function spendByRole(role,rowSet){
