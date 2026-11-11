@@ -5,14 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ovia Master OS</title>
 <style>
-  :root { --bg:#0e0f12; --fg:#e9eaee; --dim:#8b8f9a; --line:#23262d; --card:#15171c; --acc:#4ade80; }
+  :root { --bg:#0e0f12; --fg:#e9eaee; --dim:#8b8f9a; --line:#23262d; --card:#15171c; --acc:#4ade80; color-scheme:dark; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 -apple-system, "Inter", system-ui, sans-serif; }
-  main { max-width:720px; margin:0 auto; padding:40px 16px 60px; }
+  main { max-width:760px; margin:0 auto; padding:40px 16px 60px; }
   h1 { font-size:15px; letter-spacing:.08em; margin:0 0 4px; }
-  .sub { color:var(--dim); font-size:13px; margin-bottom:28px; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:18px; }
   .stale { color:#fbbf24; }
-  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  .range { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:28px; }
+  .range button, .range input { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font:inherit; font-size:13px; }
+  .range button { cursor:pointer; }
+  .range button.on { background:var(--acc); color:#06210f; border-color:var(--acc); font-weight:600; }
+  .range span { color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; table-layout:fixed; }
+  th, td { width:16%; } th:first-child, td:first-child { width:30%; } th:last-child, td:last-child { width:22%; }
   th { color:var(--dim); font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; padding:0 12px 10px; text-align:right; }
   th:first-child, td:first-child { text-align:left; padding-left:0; }
   td { padding:14px 12px; text-align:right; border-top:1px solid var(--line); font-size:22px; font-weight:600; }
@@ -29,62 +35,127 @@
   .zero { color:#4a4e58; }
   h2 { font-size:13px; letter-spacing:.08em; margin:44px 0 6px; }
   h2 small { color:var(--dim); font-weight:400; letter-spacing:0; margin-left:8px; }
-  table { table-layout:fixed; } th, td { width:16%; } th:first-child, td:first-child { width:30%; } th:last-child, td:last-child { width:22%; }
-  @media (max-width:520px) { td { font-size:16px; padding:12px 6px; } th { padding:0 6px 10px; font-size:10px; } td small { display:block; margin:0; } }
+  .note { color:var(--dim); font-size:12px; margin-top:14px; }
   a { color:var(--acc); text-decoration:none; font-size:14px; }
   a:hover { text-decoration:underline; }
   .foot { margin-top:28px; }
+  @media (max-width:520px) { td { font-size:16px; padding:12px 6px; } th { padding:0 6px 10px; font-size:10px; } td small { display:block; margin:0; } }
 </style>
 </head>
 <body>
 <main>
   <h1>OVIA FACTORY</h1>
   <div class="sub" id="sub">loading…</div>
+  <div class="range" id="range">
+    <button data-p="7">7 days</button><button data-p="14">14 days</button><button data-p="30">30 days</button>
+    <button data-p="month">This month</button><button data-p="last">Last month</button>
+    <input type="date" id="from" aria-label="From"><span>to</span><input type="date" id="to" aria-label="To">
+  </div>
   <table>
     <thead><tr><th></th><th>Scripted</th><th>Finished</th><th>Launched</th><th>Spend</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div id="bounty"></div>
+  <div class="note" id="note"></div>
   <div class="foot"><a id="asana" href="#" target="_blank" rel="noopener">Full breakdown in Asana →</a></div>
 </main>
 <script>
-var opened = {};
+var opened = {}, D = null, R = { from: '', to: '', preset: '7' };
 try { opened = JSON.parse(localStorage.getItem('fxOpen') || '{}'); } catch (e) {}
-var D = null;
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function n(v) { return v ? String(v) : '<span class="zero">0</span>'; }
-function usd(v) { return v == null ? '<span class="zero">—</span>' : (v ? '$' + Math.round(v).toLocaleString('en-US') : '<span class="zero">$0</span>'); }
+function usd(v) { return v ? '$' + Math.round(v).toLocaleString('en-US') : '<span class="zero">$0</span>'; }
 function md(s) { return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+function shift(s, d) { var t = new Date(s + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + d); return t.toISOString().slice(0, 10); }
+function preset(p) {
+  var t = D.today;
+  if (p === 'month') return [t.slice(0, 8) + '01', t];
+  if (p === 'last') { var e = shift(t.slice(0, 8) + '01', -1); return [e.slice(0, 8) + '01', e]; }
+  return [shift(t, -(+p - 1)), t];
+}
+function blank() { return { scripted: 0, finished: 0, launched: 0, spend: 0, people: {} }; }
+function agg(from, to) {
+  var by = {}, get = function (id) { return by[id] || (by[id] = blank()); };
+  var who = function (G, nm) { return G.people[nm] || (G.people[nm] = { name: nm, scripted: 0, finished: 0, launched: 0, spend: 0 }); };
+  var inr = function (d) { return !!d && d >= from && d <= to; };
+  D.rows.forEach(function (r) {
+    var G = get(r.pod);
+    if (inr(r.sd)) { G.scripted++; who(G, r.sw).scripted++; }
+    if (inr(r.fd)) { G.finished++; who(G, r.fw).finished++; }
+    if (inr(r.ld)) { G.launched++; who(G, r.lw).launched++; }
+  });
+  Object.keys(D.spend || {}).forEach(function (d) {
+    if (!inr(d)) return;
+    var S = D.spend[d];
+    Object.keys(S.p || {}).forEach(function (id) { get(id).spend += S.p[id]; });
+    get('').spend += S.u || 0;
+    Object.keys(S.b || {}).forEach(function (k) { var B = get('bounty'); B.spend += S.b[k]; who(B, k).spend += S.b[k]; });
+  });
+  return by;
+}
+function people(G) {
+  return Object.keys(G.people).map(function (k) { return G.people[k]; }).sort(function (a, b) {
+    return (b.scripted + b.finished + b.launched) - (a.scripted + a.finished + a.launched) || b.spend - a.spend || (a.name < b.name ? -1 : 1);
+  });
+}
 function draw() {
   var mins = Math.round((Date.now() - new Date(D.at).getTime()) / 60000);
   var age = mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + 'h ago';
-  document.getElementById('sub').innerHTML = 'Last ' + D.days + ' days · ' + md(D.from) + ' – ' + md(D.to) +
+  document.getElementById('sub').innerHTML = md(R.from) + ' – ' + md(R.to) +
     ' · <span class="' + (mins > 90 ? 'stale' : '') + '">updated ' + age + '</span>';
   document.getElementById('asana').href = D.asana;
-  var h = '';
-  D.pods.forEach(function (p) {
-    var o = !!opened[p.id];
+  document.getElementById('from').value = R.from; document.getElementById('to').value = R.to;
+  [].forEach.call(document.querySelectorAll('#range button'), function (b) {
+    b.className = b.getAttribute('data-p') === R.preset ? 'on' : '';
+  });
+  var by = agg(R.from, R.to), h = '', T = blank();
+  var pods = D.pods.slice();
+  var none = by[''];
+  if (none && (none.scripted || none.finished || none.launched || none.spend)) pods.push({ id: '', name: 'No pod', lead: 'old batches + content ads' });
+  pods.forEach(function (p) {
+    var G = by[p.id] || blank(), o = !!opened[p.id];
+    T.scripted += G.scripted; T.finished += G.finished; T.launched += G.launched; T.spend += G.spend;
     h += '<tr class="pod' + (o ? ' open' : '') + '" data-id="' + esc(p.id) + '"><td>' + esc(p.name) + '<small>' + esc(p.lead) +
-         '</small></td><td>' + n(p.scripted) + '</td><td>' + n(p.finished) + '</td><td>' + n(p.launched) + '</td><td>' + usd(p.spend) + '</td></tr>';
-    if (o) p.people.forEach(function (q) {
+         '</small></td><td>' + n(G.scripted) + '</td><td>' + n(G.finished) + '</td><td>' + n(G.launched) + '</td><td>' + usd(G.spend) + '</td></tr>';
+    if (o) people(G).forEach(function (q) {
       h += '<tr class="person"><td>' + esc(q.name) + '</td><td>' + n(q.scripted) + '</td><td>' + n(q.finished) +
            '</td><td>' + n(q.launched) + '</td><td></td></tr>';
     });
   });
-  h += '<tr class="total"><td>Total</td><td>' + n(D.total.scripted) + '</td><td>' + n(D.total.finished) +
-       '</td><td>' + n(D.total.launched) + '</td><td>' + usd(D.total.spend) + '</td></tr>';
+  h += '<tr class="total"><td>Total</td><td>' + n(T.scripted) + '</td><td>' + n(T.finished) +
+       '</td><td>' + n(T.launched) + '</td><td>' + usd(T.spend) + '</td></tr>';
   document.getElementById('rows').innerHTML = h;
-  var B = D.bounties, bh = '';
-  if (B && B.people.length) {
+  var B = by.bounty, bh = '';
+  if (B && people(B).length) {
     bh = '<h2>BOUNTIES <small>not in any pod or the total</small></h2><table><tbody>';
-    B.people.forEach(function (q) {
+    people(B).forEach(function (q) {
       bh += '<tr class="person"><td>' + esc(q.name) + '</td><td>' + n(q.scripted) + '</td><td>' + n(q.finished) +
-            '</td><td>' + n(q.launched) + '</td><td>' + usd(q.spend == null ? (B.spend == null ? null : 0) : q.spend) + '</td></tr>';
+            '</td><td>' + n(q.launched) + '</td><td>' + usd(q.spend) + '</td></tr>';
     });
-    bh += '<tr class="total"><td>Total</td><td>' + n(B.scripted) + '</td><td>' + n(B.finished) + '</td><td>' + n(B.launched) + '</td><td>' + usd(B.spend) + '</td></tr></tbody></table>';
+    bh += '<tr class="total"><td>Total</td><td>' + n(B.scripted) + '</td><td>' + n(B.finished) + '</td><td>' + n(B.launched) +
+          '</td><td>' + usd(B.spend) + '</td></tr></tbody></table>';
   }
   document.getElementById('bounty').innerHTML = bh;
+  var notes = [], sd = Object.keys(D.spend || {}).sort();
+  if (!sd.length) notes.push('Spend has not loaded yet.');
+  else if (R.from < sd[0]) notes.push('Spend is only stored from ' + md(sd[0]) + '; earlier days show $0.');
+  if (D.pending) notes.push('History still loading: ' + D.pending + ' batches not read yet, so scripted and finished are low for now.');
+  document.getElementById('note').textContent = notes.join(' ');
 }
+function setRange(f, t, p) {
+  if (f > t) { var x = f; f = t; t = x; }
+  R = { from: f, to: t, preset: p || '' }; draw();
+}
+document.getElementById('range').addEventListener('click', function (e) {
+  var p = e.target.getAttribute && e.target.getAttribute('data-p'); if (!p || !D) return;
+  var r = preset(p); setRange(r[0], r[1], p);
+});
+['from', 'to'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () {
+    var f = document.getElementById('from').value, t = document.getElementById('to').value;
+    if (D && f && t) setRange(f, t, '');
+  });
+});
 document.getElementById('rows').addEventListener('click', function (e) {
   var tr = e.target.closest('tr.pod'); if (!tr) return;
   var id = tr.getAttribute('data-id'); opened[id] = !opened[id];
@@ -93,7 +164,12 @@ document.getElementById('rows').addEventListener('click', function (e) {
 });
 function load() {
   fetch('factory.json?t=' + Date.now()).then(function (r) { return r.json(); })
-    .then(function (d) { D = d; draw(); })
+    .then(function (d) {
+      if (!d.rows) { document.getElementById('sub').textContent = 'waiting for the next data refresh…'; return; }
+      D = d;
+      if (R.preset || !R.from) { var r = preset(R.preset || '7'); R.from = r[0]; R.to = r[1]; R.preset = R.preset || '7'; }
+      draw();
+    })
     .catch(function () { document.getElementById('sub').textContent = 'could not load factory.json'; });
 }
 load(); setInterval(load, 300000);
