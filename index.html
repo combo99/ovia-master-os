@@ -226,9 +226,9 @@ document.getElementById('rows').addEventListener('click', function (e) {
   draw();
 });
 function load() {
-  // GitHub Pages can serve a copy 10+ minutes old; the raw file is current. Fall back to Pages.
+  // The data lives on the repo's `data` branch (pushing it to main every 10 minutes broke Pages builds).
   var m = /^([^.]+)\.github\.io$/.exec(location.hostname), repo = location.pathname.split('/')[1];
-  var raw = m && repo ? 'https://raw.githubusercontent.com/' + m[1] + '/' + repo + '/main/factory.json?t=' + Date.now() : '';
+  var raw = m && repo ? 'https://raw.githubusercontent.com/' + m[1] + '/' + repo + '/data/factory.json?t=' + Date.now() : '';
   var local = function () { return fetch('factory.json?t=' + Date.now()).then(function (r) { return r.json(); }); };
   (raw ? fetch(raw).then(function (r) { if (!r.ok) throw 0; return r.json(); }).catch(local) : local())
     .then(function (d) {
