@@ -27,6 +27,10 @@
   tr.total td { border-top:2px solid var(--fg); }
   tr.total td:first-child { padding-left:18px; }
   .zero { color:#4a4e58; }
+  h2 { font-size:13px; letter-spacing:.08em; margin:44px 0 6px; }
+  h2 small { color:var(--dim); font-weight:400; letter-spacing:0; margin-left:8px; }
+  table { table-layout:fixed; } th, td { width:16%; } th:first-child, td:first-child { width:30%; } th:last-child, td:last-child { width:22%; }
+  @media (max-width:520px) { td { font-size:16px; padding:12px 6px; } th { padding:0 6px 10px; font-size:10px; } td small { display:block; margin:0; } }
   a { color:var(--acc); text-decoration:none; font-size:14px; }
   a:hover { text-decoration:underline; }
   .foot { margin-top:28px; }
@@ -37,9 +41,10 @@
   <h1>OVIA FACTORY</h1>
   <div class="sub" id="sub">loading…</div>
   <table>
-    <thead><tr><th></th><th>Scripted</th><th>Finished</th><th>Launched</th></tr></thead>
+    <thead><tr><th></th><th>Scripted</th><th>Finished</th><th>Launched</th><th>Spend</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
+  <div id="bounty"></div>
   <div class="foot"><a id="asana" href="#" target="_blank" rel="noopener">Full breakdown in Asana →</a></div>
 </main>
 <script>
@@ -48,6 +53,7 @@ try { opened = JSON.parse(localStorage.getItem('fxOpen') || '{}'); } catch (e) {
 var D = null;
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function n(v) { return v ? String(v) : '<span class="zero">0</span>'; }
+function usd(v) { return v == null ? '<span class="zero">—</span>' : (v ? '$' + Math.round(v).toLocaleString('en-US') : '<span class="zero">$0</span>'); }
 function md(s) { return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
 function draw() {
   var mins = Math.round((Date.now() - new Date(D.at).getTime()) / 60000);
@@ -59,15 +65,25 @@ function draw() {
   D.pods.forEach(function (p) {
     var o = !!opened[p.id];
     h += '<tr class="pod' + (o ? ' open' : '') + '" data-id="' + esc(p.id) + '"><td>' + esc(p.name) + '<small>' + esc(p.lead) +
-         '</small></td><td>' + n(p.scripted) + '</td><td>' + n(p.finished) + '</td><td>' + n(p.launched) + '</td></tr>';
+         '</small></td><td>' + n(p.scripted) + '</td><td>' + n(p.finished) + '</td><td>' + n(p.launched) + '</td><td>' + usd(p.spend) + '</td></tr>';
     if (o) p.people.forEach(function (q) {
       h += '<tr class="person"><td>' + esc(q.name) + '</td><td>' + n(q.scripted) + '</td><td>' + n(q.finished) +
-           '</td><td>' + n(q.launched) + '</td></tr>';
+           '</td><td>' + n(q.launched) + '</td><td></td></tr>';
     });
   });
   h += '<tr class="total"><td>Total</td><td>' + n(D.total.scripted) + '</td><td>' + n(D.total.finished) +
-       '</td><td>' + n(D.total.launched) + '</td></tr>';
+       '</td><td>' + n(D.total.launched) + '</td><td>' + usd(D.total.spend) + '</td></tr>';
   document.getElementById('rows').innerHTML = h;
+  var B = D.bounties, bh = '';
+  if (B && B.people.length) {
+    bh = '<h2>BOUNTIES <small>not in any pod or the total</small></h2><table><tbody>';
+    B.people.forEach(function (q) {
+      bh += '<tr class="person"><td>' + esc(q.name) + '</td><td>' + n(q.scripted) + '</td><td>' + n(q.finished) +
+            '</td><td>' + n(q.launched) + '</td><td>' + usd(q.spend == null ? (B.spend == null ? null : 0) : q.spend) + '</td></tr>';
+    });
+    bh += '<tr class="total"><td>Total</td><td>' + n(B.scripted) + '</td><td>' + n(B.finished) + '</td><td>' + n(B.launched) + '</td><td>' + usd(B.spend) + '</td></tr></tbody></table>';
+  }
+  document.getElementById('bounty').innerHTML = bh;
 }
 document.getElementById('rows').addEventListener('click', function (e) {
   var tr = e.target.closest('tr.pod'); if (!tr) return;
