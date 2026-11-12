@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ovia Master OS</title>
+<link rel="icon" id="favicon">
 <style>
   :root { --bg:#0e0f12; --fg:#e9eaee; --dim:#8b8f9a; --line:#23262d; --card:#15171c; --acc:#4ade80; color-scheme:dark; }
   * { box-sizing: border-box; }
@@ -77,6 +78,20 @@
   <div class="foot"><a id="asana" href="#" target="_blank" rel="noopener">Full breakdown in Asana →</a></div>
 </main>
 <script>
+/* Tab icon: the same mark the old Master OS page had (bars + trend line). Built here so no "+" sits in an HTML attribute. */
+(function(){
+  var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+    + "<rect width='64' height='64' rx='14' fill='#0b0e13'/>"
+    + "<rect x='11' y='36' width='9' height='16' rx='2.5' fill='#3ddc97' opacity='.55'/>"
+    + "<rect x='27.5' y='27' width='9' height='25' rx='2.5' fill='#3ddc97' opacity='.78'/>"
+    + "<rect x='44' y='17' width='9' height='35' rx='2.5' fill='#3ddc97'/>"
+    + "<polyline points='13,30 26,22 34,26 51,10' fill='none' stroke='#e6ebf2'"
+    + " stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/>"
+    + "<circle cx='51' cy='10' r='4.4' fill='#e6ebf2'/></svg>";
+  var el = document.getElementById("favicon");
+  if (el) el.href = "data:image/svg+xml," + encodeURIComponent(svg);
+})();
+
 var opened = {}, D = null, R = { from: '', to: '', preset: '7' };
 try { opened = JSON.parse(localStorage.getItem('fxOpen') || '{}'); } catch (e) {}
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
