@@ -62,7 +62,7 @@
   <div class="sub" id="sub">loading…</div>
   <div class="warn" id="warn" hidden></div>
   <div class="range" id="range">
-    <button data-p="7">7 days</button><button data-p="14">14 days</button><button data-p="30">30 days</button>
+    <button data-p="week">This week</button><button data-p="7">7 days</button><button data-p="14">14 days</button><button data-p="30">30 days</button>
     <button data-p="month">This month</button><button data-p="last">Last month</button>
     <div class="pick">
       <button id="pickBtn" aria-haspopup="dialog">Pick dates</button>
@@ -101,6 +101,7 @@ function md(s) { return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { 
 function shift(s, d) { var t = new Date(s + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + d); return t.toISOString().slice(0, 10); }
 function preset(p) {
   var t = D.today;
+  if (p === 'week') return [shift(t, -((new Date(t + 'T12:00:00Z').getUTCDay() + 6) % 7)), t];
   if (p === 'month') return [t.slice(0, 8) + '01', t];
   if (p === 'last') { var e = shift(t.slice(0, 8) + '01', -1); return [e.slice(0, 8) + '01', e]; }
   return [shift(t, -(+p - 1)), t];
